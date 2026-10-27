@@ -1,0 +1,17 @@
+{
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Effect": "Allow",
+   "Action": "lambda:InvokeFunction",
+   "Resource": [
+    "arn:aws:lambda:__REGION__:__ACCT__:function:__NAME__-redshift-mcp",
+    "arn:aws:lambda:__REGION__:__ACCT__:function:__NAME__-redshift-mcp:*",
+    "arn:aws:lambda:__REGION__:__ACCT__:function:__NAME__-postgres-mcp",
+    "arn:aws:lambda:__REGION__:__ACCT__:function:__NAME__-postgres-mcp:*",
+    "arn:aws:lambda:__REGION__:__ACCT__:function:__NAME__-bedrock-kb-mcp",
+    "arn:aws:lambda:__REGION__:__ACCT__:function:__NAME__-bedrock-kb-mcp:*"
+   ]
+  }
+ ]
+}

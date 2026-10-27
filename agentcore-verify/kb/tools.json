@@ -1,0 +1,20 @@
+[
+  {
+    "name": "ListKnowledgeBases",
+    "description": "List the Bedrock knowledge bases that this connector can see. Usually not needed, because QueryKnowledgeBases already has a default knowledge base.",
+    "inputSchema": {"type": "object", "properties": {}}
+  },
+  {
+    "name": "QueryKnowledgeBases",
+    "description": "Search the company knowledge base (RAG) with a natural language question and return the most relevant passages with their sources. Use it for questions about documents, FAQs and product information.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {"type": "string", "description": "The question or search text in natural language."},
+        "number_of_results": {"type": "integer", "description": "How many passages to return. Default 10."},
+        "knowledge_base_id": {"type": "string", "description": "Optional. Leave empty to use the default knowledge base."}
+      },
+      "required": ["query"]
+    }
+  }
+]

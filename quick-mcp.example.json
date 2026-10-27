@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "redshift": {
+      "command": "/opt/homebrew/bin/uvx",
+      "args": ["awslabs.redshift-mcp-server@latest"],
+      "env": {
+        "AWS_PROFILE": "<profile>",
+        "AWS_REGION": "us-east-1",
+        "AWS_DEFAULT_REGION": "us-east-1",
+        "LOG_LEVEL": "ERROR"
+      }
+    },
+    "rds-postgres": {
+      "command": "/opt/homebrew/bin/uvx",
+      "args": [
+        "awslabs.postgres-mcp-server@1.2.2",
+        "--region", "us-east-1",
+        "--secret_arn", "<PG_READONLY_SECRET_ARN>",
+        "--privilege_check", "enforce"
+      ],
+      "env": {
+        "AWS_PROFILE": "<profile>",
+        "AWS_REGION": "us-east-1",
+        "AWS_DEFAULT_REGION": "us-east-1",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    },
+    "bedrock-kb": {
+      "command": "/opt/homebrew/bin/uvx",
+      "args": ["awslabs.bedrock-kb-retrieval-mcp-server@latest"],
+      "env": {
+        "AWS_PROFILE": "<profile>",
+        "AWS_REGION": "us-west-2",
+        "AWS_DEFAULT_REGION": "us-west-2",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  }
+}

@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>用自然语言在 Quick 使用 MCP 查询、分析、可视化 AWS 上的数据</title>
+<style>
+  :root {
+    --ink: #14202e;
+    --muted: #46576a;
+    --line: #d5dde6;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --navy: #232f3e;
+    --navy-2: #2f3f54;
+    --accent: #ff9900;
+    --link: #0b5cad;
+    --ok-fg: #0a5d33;   --ok-bg: #e2f5ea;
+    --warn-fg: #6e4300; --warn-bg: #fff0cf;
+    --risk-fg: #8f1a1a; --risk-bg: #fde7e7;
+    --info-fg: #0b4a8a; --info-bg: #e4f0fc;
+    --code-bg: #0f1b2a;
+    --code-fg: #e6edf5;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+          "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  }
+  a { color: var(--link); }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid #ffb84d; outline-offset: 2px; }
+  .skip { position: absolute; left: -999px; top: 0; background: #fff; color: #000; padding: 8px 12px; z-index: 100; }
+  .skip:focus { left: 8px; top: 8px; }
+
+  header.hero { background: linear-gradient(135deg, var(--navy), var(--navy-2)); color: #fff; padding: 40px 24px 32px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .hero h1 { margin: 0 0 8px; font-size: clamp(1.5rem, 3vw, 2.1rem); line-height: 1.3; }
+  .hero p { margin: 0; max-width: 860px; color: #dbe5f0; }
+  .chain { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 20px; font-weight: 600; }
+  .chain span.node { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.35); padding: 6px 12px; border-radius: 999px; }
+  .chain span.arrow { color: var(--accent); }
+
+  nav.toc { position: sticky; top: 0; z-index: 50; background: #fff; border-bottom: 1px solid var(--line); }
+  nav.toc ul { list-style: none; margin: 0 auto; padding: 0 24px; max-width: 1180px; display: flex; flex-wrap: wrap; gap: 4px; }
+  nav.toc a { display: block; padding: 12px 12px; text-decoration: none; color: var(--ink); font-weight: 600; font-size: .95rem; border-bottom: 3px solid transparent; }
+  nav.toc a:hover { border-bottom-color: var(--accent); }
+
+  main { padding: 8px 24px 64px; }
+  section { margin-top: 40px; }
+  h2 { font-size: 1.5rem; margin: 0 0 6px; padding-left: 12px; border-left: 6px solid var(--accent); line-height: 1.3; }
+  h3 { font-size: 1.12rem; margin: 28px 0 8px; }
+  .lead { color: var(--muted); margin: 4px 0 18px; max-width: 900px; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
+  .grid { display: grid; gap: 16px; }
+  .g2 { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+  .g3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card h3:first-child, .card h4:first-child { margin-top: 0; }
+  .card h4 { margin: 0 0 6px; font-size: 1rem; }
+
+  .badge { display: inline-block; font-size: .78rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; vertical-align: middle; white-space: nowrap; }
+  .b-ok { color: var(--ok-fg); background: var(--ok-bg); }
+  .b-warn { color: var(--warn-fg); background: var(--warn-bg); }
+  .b-risk { color: var(--risk-fg); background: var(--risk-bg); }
+  .b-info { color: var(--info-fg); background: var(--info-bg); }
+
+  .callout { border-left: 5px solid; border-radius: 6px; padding: 12px 16px; margin: 16px 0; }
+  .callout p { margin: 0 0 6px; } .callout p:last-child { margin: 0; }
+  .c-warn { background: var(--warn-bg); border-color: #d98a00; color: #3d2600; }
+  .c-risk { background: var(--risk-bg); border-color: #c62828; color: #4a0e0e; }
+  .c-info { background: var(--info-bg); border-color: #1d6fc4; color: #0a2b50; }
+  .c-ok { background: var(--ok-bg); border-color: #1e8f55; color: #07351e; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--card); font-size: .94rem; }
+  caption { text-align: left; font-weight: 700; padding: 0 0 8px; color: var(--muted); }
+  th, td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: #eaf0f6; font-weight: 700; }
+  .tablewrap { overflow-x: auto; border-radius: var(--radius); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .88em; background: #eaeff5; padding: 1px 5px; border-radius: 4px; }
+  .codewrap { position: relative; margin: 12px 0; }
+  pre { margin: 0; background: var(--code-bg); color: var(--code-fg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font-size: .85rem; line-height: 1.55; }
+  pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+  .copy { position: absolute; top: 8px; right: 8px; background: #3b4d63; color: #fff; border: 1px solid #5d7189; border-radius: 6px; padding: 3px 10px; font-size: .78rem; cursor: pointer; }
+  .copy:hover { background: #4a6079; }
+
+  figure { margin: 0; }
+  figcaption { color: var(--muted); font-size: .9rem; margin-top: 8px; }
+  .shot { margin: 18px 0; }
+  .shot img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; }
+  .shot figcaption { color: var(--ink); font-size: .95rem; }
+  .diagram { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; overflow-x: auto; }
+  .diagram svg { min-width: 980px; width: 100%; height: auto; display: block; }
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; font-size: .88rem; color: var(--muted); margin-top: 8px; }
+  .legend i { display: inline-block; width: 36px; border-top: 3px solid #1d5fa8; vertical-align: middle; margin-right: 6px; }
+  .legend i.dash { border-top-style: dashed; border-top-color: #8a6d00; }
+
+  ol.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 12px; }
+  ol.steps > li { counter-increment: s; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px 14px 62px; position: relative; }
+  ol.steps > li::before { content: counter(s); position: absolute; left: 16px; top: 14px; width: 32px; height: 32px; border-radius: 50%; background: var(--navy); color: #fff; font-weight: 700; display: grid; place-items: center; }
+  ol.steps h4 { margin: 0 0 4px; font-size: 1.02rem; }
+  ol.steps p { margin: 0 0 6px; }
+
+  .layers { display: grid; gap: 10px; }
+  .layer { display: grid; grid-template-columns: 54px 1fr; gap: 14px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .layer .n { width: 40px; height: 40px; border-radius: 8px; background: var(--navy); color: #fff; display: grid; place-items: center; font-weight: 800; }
+  .layer h4 { margin: 0 0 2px; }
+  .layer p { margin: 0; color: var(--muted); }
+  .layer.wide .n { background: #8f1a1a; }
+
+  .kpis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-top: 22px; }
+  .kpi { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.28); border-radius: 10px; padding: 12px 14px; }
+  .kpi b { display: block; font-size: 1.5rem; color: #ffd08a; }
+  .kpi span { font-size: .88rem; color: #dbe5f0; }
+
+  details { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 16px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+
+  footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; color: var(--muted); font-size: .88rem; }
+
+  @media (max-width: 720px) {
+    nav.toc ul { padding: 0 8px; }
+    main { padding: 8px 14px 48px; }
+    .layer { grid-template-columns: 1fr; }
+  }
+  @media print {
+    nav.toc, .copy, .skip { display: none; }
+    body { background: #fff; }
+    .card, details, table, ol.steps > li, .layer { break-inside: avoid; }
+    pre { white-space: pre-wrap; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>用自然语言在 Quick 使用 MCP 查询、分析、可视化 AWS 上的数据</h1>
+    <div class="chain" aria-label="整体链路">
+      <span class="node">Amazon Quick</span><span class="arrow" aria-hidden="true">→</span>
+      <span class="node">Cognito 鉴权</span><span class="arrow" aria-hidden="true">→</span>
+      <span class="node">AgentCore Gateway</span><span class="arrow" aria-hidden="true">→</span>
+      <span class="node">Lambda + awslabs MCP</span><span class="arrow" aria-hidden="true">→</span>
+      <span class="node">Redshift / RDS / Bedrock 知识库</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc" aria-label="章节导航">
+  <ul>
+    <li><a href="#scenario">1 业务场景与推荐架构</a></li>
+    <li><a href="#client">2 Client 配置流程</a></li>
+    <li><a href="#mcp">3 MCP 介绍与支持的服务</a></li>
+    <li><a href="#build">4 MCP server on AgentCore 搭建方式</a></li>
+    <li><a href="#perm">5 权限授予</a></li>
+    <li><a href="#net">6 网络安全</a></li>
+  </ul>
+</nav>
+
+<main id="main" class="wrap">
+
+<!-- ================= 1 业务场景与推荐架构 ================= -->
+<section id="scenario" aria-labelledby="h-scenario">
+  <h2 id="h-scenario">1 业务场景与推荐架构</h2>
+  <p class="lead">场景：业务人员不需要数据工程、数据库或 BI 的背景知识，只需在 Amazon Quick 里做最简配置，就能在线查询部署在 AWS 上的数据库、数据仓库和 RAG 知识库数据，并用一句话完成数据分析与展示。</p>
+
+  <div class="tablewrap">
+  <table>
+    <caption>快速 demo：Local MCP</caption>
+    <thead><tr><th>数据所在</th><th>业务人员会怎么问</th><th>MCP（awslabs 开源）</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Amazon Redshift</strong><br>数据仓库</td>
+        <td>“按区域和品类统计收入”<br>“哪个月销量最高”</td>
+        <td><code>redshift-mcp-server</code><br>发现集群、浏览库表、只读查询</td>
+      </tr>
+      <tr>
+        <td><strong>Amazon RDS</strong><br>PostgreSQL</td>
+        <td>“有哪些表”<br>“最近订单按品类汇总”</td>
+        <td><code>postgres-mcp-server</code><br>只读角色，直连私网</td>
+      </tr>
+      <tr>
+        <td><strong>Amazon Bedrock 知识库</strong><br>RAG 检索企业文档</td>
+        <td>“退货流程是什么”<br>“某产品支持哪些功能”</td>
+        <td><code>bedrock-kb-retrieval-mcp-server</code><br>3 个工具：<code>ListKnowledgeBases</code>、<code>QueryKnowledgeBases</code>、<code>AgenticQueryKnowledgeBases</code></td>
+      </tr>
+      <tr>
+        <td>其他 AWS 服务</td>
+        <td>DynamoDB、DocumentDB、Neptune、ElastiCache、时序、监控、成本等</td>
+        <td>见第 3 节“支持的服务”</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>企业推荐：Cognito + AgentCore Gateway</h3>
+  <p>Quick 的云端 MCP 连接器只接受远程服务，而 awslabs 的 MCP 都是本地进程。企业场景推荐的做法是：用 Cognito（或企业已有的 IdP）签发令牌，用 AgentCore Gateway 作为统一的、带鉴权的远程入口，Lambda 里运行 MCP server。</p>
+
+  <h4>架构优势</h4>
+  <div class="grid g3">
+    <div class="card">
+      <h4>免本地部署与依赖</h4>
+      <p>MCP server 在云端 Lambda 里运行，用户无需在本地电脑安装 <code>uv</code>/<code>uvx</code>、Python 运行时或 awslabs MCP server，也不用维护本机 AWS 凭证和网络到数据库的直连。Quick 用云端连接器自动换令牌即可使用，换台设备、换个人都不受本机环境影响。</p>
+    </div>
+    <div class="card">
+      <h4>安全管控 + 可审计</h4>
+      <p>访问统一经 Cognito 签发的 OAuth 令牌和 Gateway 的 JWT 校验，凭证和权限集中在 Secrets Manager 与 IAM 管理，不下发到终端。每个 Lambda 目标只授予最小权限（如仅 <code>bedrock:Retrieve</code>、数据库只读角色），所有调用经 Gateway 与 CloudTrail/CloudWatch 留痕，可审计、可追溯、可随时在 Cognito 轮换密钥。</p>
+    </div>
+    <div class="card">
+      <h4>后台无感知迭代与扩展</h4>
+      <p>新增数据源或工具只需在同一个 Gateway 上加目标、更新 Lambda，客户端无需改配置；在连接器里重新 Sync 即可看到新工具。版本升级、权限调整、扩容都在后台完成，对用户透明，天然支持多客户端、多团队横向扩展。</p>
+    </div>
+  </div>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 1100 560" role="img" aria-labelledby="svg-t svg-d" xmlns="http://www.w3.org/2000/svg">
+      <title id="svg-t">推荐架构：Quick、Cognito、AgentCore Gateway、Lambda 与 AWS 数据服务</title>
+      <desc id="svg-d">Amazon Quick 先向 Cognito 取得 OAuth 令牌，再携带令牌访问 AgentCore Gateway。Gateway 校验令牌后按目标路由到三个 Lambda：Redshift MCP、RDS PostgreSQL MCP（在 VPC 内）和 Bedrock 知识库 MCP。Lambda 分别访问 Redshift、RDS 和 Bedrock 知识库。底部是 Quick Desktop 通过本地连接器在本机直接运行 MCP server 的路径，用本机 AWS 凭证访问同样的服务。</desc>
+      <defs>
+        <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1d5fa8"/></marker>
+        <marker id="ad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8a6d00"/></marker>
+        <style>
+          .bx{fill:#fff;stroke:#2f3f54;stroke-width:2}
+          .bxq{fill:#fff4e0;stroke:#d98a00;stroke-width:2}
+          .bxa{fill:#e8f1fb;stroke:#1d5fa8;stroke-width:2}
+          .bxg{fill:#e6f5ec;stroke:#1e8f55;stroke-width:2}
+          .bxd{fill:#fffbea;stroke:#8a6d00;stroke-width:2;stroke-dasharray:6 4}
+          .t{font:600 15px sans-serif;fill:#14202e}
+          .s{font:13px sans-serif;fill:#3a4a5c}
+          .h{font:600 13px sans-serif;fill:#46576a}
+          .l{font:600 13px sans-serif;fill:#0b3d73}
+          .ld{font:600 13px sans-serif;fill:#6e4f00}
+          .ln{stroke:#1d5fa8;stroke-width:2.4;fill:none}
+          .lnd{stroke:#8a6d00;stroke-width:2.2;fill:none;stroke-dasharray:7 5}
+        </style>
+      </defs>
+
+      <text x="20" y="22" class="h">客户端</text>
+      <text x="300" y="22" class="h">身份与统一入口</text>
+      <text x="590" y="22" class="h">计算层（每个目标一个 Lambda）</text>
+      <text x="900" y="22" class="h">AWS 数据服务</text>
+
+      <rect class="bxq" x="20" y="190" width="200" height="150" rx="10"/>
+      <text class="t" x="36" y="270">Amazon Quick</text>
+
+      <rect class="bxa" x="300" y="44" width="200" height="82" rx="10"/>
+      <text class="t" x="316" y="72">Amazon Cognito</text>
+      <text class="s" x="316" y="94">签发令牌 client_credentials</text>
+      <text class="s" x="316" y="112">scope：invoke</text>
+
+      <rect class="bxa" x="300" y="160" width="200" height="270" rx="10"/>
+      <text class="t" x="316" y="188">AgentCore Gateway</text>
+      <text class="s" x="316" y="214">协议 MCP</text>
+      <text class="s" x="316" y="236">JWT 校验</text>
+      <text class="s" x="316" y="258">（AgentCore Identity）</text>
+      <text class="s" x="316" y="296">一个入口，多个目标</text>
+      <text class="s" x="316" y="342">Gateway 角色只允许</text>
+      <text class="s" x="316" y="360">调用对应的 Lambda</text>
+
+      <rect class="bx" x="590" y="160" width="240" height="80" rx="10"/>
+      <text class="t" x="606" y="186">Lambda · Redshift MCP</text>
+      <text class="s" x="606" y="208">只读（或受限写入）</text>
+      <text class="s" x="606" y="226">Data API，无入站端口</text>
+
+      <rect class="bx" x="590" y="255" width="240" height="80" rx="10"/>
+      <text class="t" x="606" y="281">Lambda · Postgres MCP</text>
+      <text class="s" x="606" y="303">放在 VPC 内，私网直连</text>
+      <text class="s" x="606" y="321">只读数据库角色</text>
+
+      <rect class="bx" x="590" y="350" width="240" height="80" rx="10"/>
+      <text class="t" x="606" y="376">Lambda · Bedrock KB MCP</text>
+      <text class="s" x="606" y="398">QueryKnowledgeBases</text>
+      <text class="s" x="606" y="416">只授予 bedrock:Retrieve</text>
+
+      <rect class="bxg" x="900" y="160" width="190" height="80" rx="10"/>
+      <text class="t" x="916" y="190">Amazon Redshift</text>
+      <text class="s" x="916" y="212">Serverless / 集群</text>
+
+      <rect class="bxg" x="900" y="255" width="190" height="80" rx="10"/>
+      <text class="t" x="916" y="285">Amazon RDS</text>
+      <text class="s" x="916" y="307">PostgreSQL</text>
+
+      <rect class="bxg" x="900" y="350" width="190" height="80" rx="10"/>
+      <text class="t" x="916" y="380">Bedrock 知识库</text>
+      <text class="s" x="916" y="402">RAG 检索</text>
+
+      <rect class="bx" x="20" y="470" width="200" height="70" rx="10"/>
+      <text class="t" x="36" y="497">Quick Desktop</text>
+      <text class="s" x="36" y="518">Local 连接器（本机运行）</text>
+      <rect class="bxd" x="300" y="470" width="270" height="70" rx="10"/>
+      <text class="t" x="316" y="497">本机 awslabs MCP server</text>
+      <text class="s" x="316" y="518">uvx 启动，用本机 AWS 凭证</text>
+
+      <path class="ln" d="M120 190 V85 H300" marker-end="url(#a)"/>
+      <text class="l" x="132" y="78">① 取令牌</text>
+      <path class="ln" d="M220 265 H300" marker-end="url(#a)"/>
+      <text class="l" x="226" y="256">② 令牌</text>
+      <path class="ln" d="M400 160 V126" marker-end="url(#a)"/>
+      <text class="l" x="410" y="148">校验</text>
+
+      <path class="ln" d="M500 200 H590" marker-end="url(#a)"/>
+      <text class="l" x="506" y="192">③ redshift</text>
+      <path class="ln" d="M500 295 H590" marker-end="url(#a)"/>
+      <text class="l" x="506" y="287">③ postgres</text>
+      <path class="ln" d="M500 390 H590" marker-end="url(#a)"/>
+      <text class="l" x="506" y="382">③ bedrock-kb</text>
+
+      <path class="ln" d="M830 200 H900" marker-end="url(#a)"/>
+      <path class="ln" d="M830 295 H900" marker-end="url(#a)"/>
+      <path class="ln" d="M830 390 H900" marker-end="url(#a)"/>
+
+      <path class="lnd" d="M220 505 H300" marker-end="url(#ad)"/>
+      <path class="lnd" d="M570 505 H995 V430" marker-end="url(#ad)"/>
+      <text class="ld" x="620" y="496">直接调用 AWS API（不经过 Gateway）</text>
+    </svg>
+    <figcaption>实线：已在验证环境跑通的链路。虚线：本机直连路径，或尚未验证的目标。</figcaption>
+  </figure>
+  <div class="legend"><span><i></i>已验证</span><span><i class="dash"></i>本机直连 / 未验证</span></div>
+
+</section>
+
+
+<!-- ================= 2 Client 配置流程 ================= -->
+<section id="client" aria-labelledby="h-client">
+  <h2 id="h-client">2 Client 配置流程</h2>
+  <p class="lead">默认使用 <strong>Quick Desktop 桌面端</strong>配置。只用两种 MCP 连接器：<strong>Local</strong>——在本机直接运行 MCP，几分钟配好，适合快速验证；<strong>云端（Cloud）</strong>——用 AgentCore Gateway 加 Cognito 提供统一入口，Quick 自动换令牌，凭证和权限集中管理，是企业最佳实践。Quick 的界面我没有逐项操作，字段来自官方文档，命令本身都在本机实测过。</p>
+
+  <div class="tablewrap">
+  <table>
+    <caption>快速 Local 与企业最佳实践 AgentCore 的区别</caption>
+    <thead><tr><th>维度</th><th>A 快速：Local 连接器</th><th>B 企业最佳实践：云端 MCP 连接器（AgentCore）</th></tr></thead>
+    <tbody>
+      <tr><td>适用</td><td>个人、小团队、演示和验证</td><td>企业生产环境</td></tr>
+      <tr><td>配置</td><td>一条命令，几分钟；每个用户自己配</td><td>管理员一次性搭建，并在 Quick 里建一个连接器；用户登录即用</td></tr>
+      <tr><td>AWS 凭证在哪</td><td>每个人的电脑（<code>~/.aws</code>）</td><td>集中在 Lambda 角色，电脑上没有 AWS 凭证</td></tr>
+      <tr><td>权限与审计</td><td>每人自己的 profile，难统一</td><td>统一的 Gateway 鉴权、Lambda 角色、只读库用户，CloudTrail 审计</td></tr>
+      <tr><td>网络</td><td>笔记本要能直达数据库</td><td>Lambda 在 VPC 内私网访问，不受笔记本网络限制</td></tr>
+      <tr><td>可用范围</td><td>只在这台电脑开机联网时可用</td><td>任何能访问 Gateway 的客户端</td></tr>
+      <tr><td>代价</td><td>管理员 profile 会让 Agent 权限过大</td><td>Quick 自动向 Cognito 换令牌，不用手动更新；单次调用实测 7 到 23 秒</td></tr>
+      <tr><td>需要 AgentCore</td><td>不需要</td><td>需要</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>A 快速：Quick Desktop 的 Local 连接器</h3>
+  <p>入口：Customize → Connectors → Create → Create local connector → <strong>Local</strong>。字段：Name、Command、Arguments、Description、Environment variables、Timeout（5 到 300 秒，默认 30）。三个通用要点：</p>
+  <ul>
+    <li><strong>Command 用绝对路径</strong>（例如 <code>/opt/homebrew/bin/uvx</code>）。图形界面应用不继承终端的 PATH，pyenv 的 shim 可能找不到。</li>
+    <li><strong>Timeout 填 120。</strong>首次启动要下载依赖（实测 Postgres MCP 首次 18 秒，托管代理首次 24 秒）。</li>
+    <li>凭证来自环境变量里的 <code>AWS_PROFILE</code>。正式使用请给 MCP 单独建只读 profile，不要用管理员 profile。</li>
+  </ul>
+
+  <h4>配置依赖清单（可交给 Kiro 自动安装）</h4>
+  <p>Local 方式需要在本机准备下面这些依赖。可以交给 Kiro 逐项检查，缺什么装什么。命令以 macOS 为准（我在 macOS 上验证过）；Windows 的启动写法不同，见各 MCP 项目的 README。</p>
+
+  <div class="tablewrap">
+  <table>
+    <caption>本机依赖（Kiro 可执行检查与安装）</caption>
+    <thead><tr><th>依赖</th><th>用途</th><th>检查命令</th><th>安装命令（macOS）</th><th>是否必需</th></tr></thead>
+    <tbody>
+      <tr><td>uv（含 <code>uvx</code>）</td><td>一条命令启动 awslabs MCP，自动管理依赖</td><td><code>uvx --version</code></td><td><code>brew install uv</code></td><td>必需</td></tr>
+      <tr><td>uvx 的绝对路径</td><td>填进 Quick 的 Command 字段（图形界面不继承终端 PATH）</td><td><code>which uvx</code></td><td>无需安装；Homebrew 一般是 <code>/opt/homebrew/bin/uvx</code></td><td>必需</td></tr>
+      <tr><td>Python 3.10 及以上</td><td>运行 awslabs MCP</td><td><code>uv python list --only-installed</code></td><td>uv 会按需自动下载；手动装：<code>uv python install 3.13</code></td><td>自动，无需手动</td></tr>
+      <tr><td>AWS CLI</td><td>配置 profile、校验身份</td><td><code>aws --version</code></td><td><code>brew install awscli</code></td><td>推荐</td></tr>
+      <tr><td>AWS profile 与凭证</td><td>MCP 以这个 profile 的权限访问 AWS</td><td><code>aws sts get-caller-identity --profile &lt;profile&gt;</code></td><td>由你自己配置：<code>aws configure --profile &lt;profile&gt;</code>。<strong>Kiro 不要代填或打印密钥</strong></td><td>必需</td></tr>
+      <tr><td>Quick Desktop 桌面端</td><td>客户端</td><td>—</td><td>手动安装，Kiro 无法代装</td><td>必需</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <details open>
+    <summary>Redshift（<code>awslabs.redshift-mcp-server</code>）<span class="badge b-ok">命令已验证</span></summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th>字段</th><th>填写</th></tr></thead>
+      <tbody>
+        <tr><td>Name</td><td><code>Redshift</code></td></tr>
+        <tr><td>Command</td><td><code>/opt/homebrew/bin/uvx</code></td></tr>
+        <tr><td>Arguments</td><td><code>awslabs.redshift-mcp-server@latest</code></td></tr>
+        <tr><td>Environment variables</td><td><code>AWS_PROFILE=&lt;profile&gt;</code>、<code>AWS_REGION=us-east-1</code>、<code>AWS_DEFAULT_REGION=us-east-1</code>、<code>LOG_LEVEL=ERROR</code></td></tr>
+        <tr><td>Timeout (seconds)</td><td><code>120</code></td></tr>
+      </tbody>
+    </table></div>
+    <p>实测：启动加列工具 5.5 秒，返回 7 个工具，能发现 Serverless 工作组。默认只读，不要加 <code>ACCESS_MODE=read-write</code>。</p>
+  </details>
+
+  <details>
+    <summary>RDS PostgreSQL（<code>awslabs.postgres-mcp-server</code>）<span class="badge b-ok">命令已验证</span></summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th>字段</th><th>填写</th></tr></thead>
+      <tbody>
+        <tr><td>Name</td><td><code>RDS PostgreSQL</code></td></tr>
+        <tr><td>Command</td><td><code>/opt/homebrew/bin/uvx</code></td></tr>
+        <tr><td>Arguments</td><td><code>awslabs.postgres-mcp-server@1.2.2 --region us-east-1 --secret_arn &lt;只读角色的密钥 ARN&gt; --privilege_check enforce</code></td></tr>
+        <tr><td>Environment variables</td><td><code>AWS_PROFILE=&lt;profile&gt;</code>、<code>AWS_REGION=us-east-1</code>、<code>FASTMCP_LOG_LEVEL=ERROR</code></td></tr>
+        <tr><td>Timeout (seconds)</td><td><code>120</code></td></tr>
+      </tbody>
+    </table></div>
+    <ul>
+      <li><strong>不要</strong>在 Arguments 里加 <code>--db_type</code>、<code>--db_endpoint</code>：对 RDS 单实例，这个 server 会因缺少集群 ARN 启动即崩溃。连接由 Agent 调用 <code>connect_to_database</code> 完成，<code>cluster_identifier</code> 必须传空字符串。</li>
+      <li>数据库账号用<strong>只读角色</strong>，密码放 Secrets Manager，用 <code>--secret_arn</code> 引用。</li>
+      <li>本地模式会暴露 7 个工具，包括 <code>create_cluster</code>（创建 Aurora 集群）。profile 若是管理员权限，Agent 理论上能真的建集群并计费，请换成范围很小的 profile。</li>
+      <li>笔记本要能到达数据库的 5432，换网络后需要更新安全组白名单。</li>
+    </ul>
+    <p>第一条聊天消息可以这样告诉 Agent 怎么连（聊天输入没有字符限制）：</p>
+    <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>请先用 connect_to_database 连接数据库：region us-east-1，database_type RPG，
+connection_method pgwire，port 5432，database &lt;库名&gt;，cluster_identifier 传空字符串，
+db_endpoint &lt;RDS 端点&gt;。
+连接后用 run_query 和 get_table_schema 查询，并带上同样的 connection_method、db_endpoint、database。
+然后告诉我有哪些表。</code></pre></div>
+  </details>
+
+  <details>
+    <summary>Bedrock 知识库 RAG（<code>awslabs.bedrock-kb-retrieval-mcp-server</code>）<span class="badge b-ok">命令已验证</span></summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th>字段</th><th>填写</th></tr></thead>
+      <tbody>
+        <tr><td>Name</td><td><code>Bedrock Knowledge Base</code></td></tr>
+        <tr><td>Command</td><td><code>/opt/homebrew/bin/uvx</code></td></tr>
+        <tr><td>Arguments</td><td><code>awslabs.bedrock-kb-retrieval-mcp-server@latest</code></td></tr>
+        <tr><td>Environment variables</td><td><code>AWS_PROFILE=&lt;profile&gt;</code>、<code>AWS_REGION=&lt;知识库所在区域&gt;</code>、<code>FASTMCP_LOG_LEVEL=ERROR</code></td></tr>
+        <tr><td>Timeout (seconds)</td><td><code>120</code></td></tr>
+      </tbody>
+    </table></div>
+    <ul>
+      <li><code>AWS_REGION</code> 要填<strong>知识库所在的区域</strong>。我验证时知识库在 us-west-2，所以填的是 us-west-2。</li>
+      <li>实测：启动 5.6 秒，3 个工具；<code>QueryKnowledgeBases</code>（参数 <code>query</code>、<code>knowledge_base_id</code> 必填，另有 <code>number_of_results</code>、<code>reranking</code> 等）返回正常结果。<code>ListKnowledgeBases</code> 我没有测。</li>
+      <li>检索前先确认知识库数据源的同步状态是 <code>COMPLETE</code>；同步失败的知识库检索返回 0 条。</li>
+      <li>经 AgentCore Gateway（Lambda 目标）也已验证：<code>tools/list</code> 共 11 个工具，<code>QueryKnowledgeBases</code> 不传知识库 ID 也能用默认知识库检索，单次约 6 秒；Lambda 角色只授予对该知识库的 <code>bedrock:Retrieve</code> 一项权限。</li>
+      <li>需要对知识库的检索权限。我验证时用的是管理员 profile，最小权限我没有梳理。</li>
+    </ul>
+    <p>对 Agent 说：“在知识库 &lt;知识库 ID&gt; 里查一下……，给出处”。</p>
+  </details>
+
+  <h3>A 演示：Local 连接器从配置到出图（Quick Desktop 截图）</h3>
+  <figure class="shot">
+    <img src="images/web/1-create-local-connector.png" alt="Quick Desktop 的 Connectors 页，Create 下拉菜单有 Cloud connector、Local connector、Coding agent 三项" width="878" height="327" loading="lazy">
+    <figcaption><strong>1 入口。</strong>Customize → Connectors，右上角 Create 下拉里有 Cloud connector、Local connector、Coding agent 三项。本节选 Local connector；下面的 B 选 Cloud connector。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="images/web/2-edit-mcp.png" alt="Edit MCP 对话框：Name、Command、Arguments、Description 和环境变量，底部有 Test connection 与 Save changes" width="760" height="1042" loading="lazy" style="max-width:min(100%,460px)">
+    <figcaption><strong>2 逐个创建。</strong>填 Name、Command（uvx 的绝对路径）、Arguments、Description 和环境变量。环境变量的值显示为 Stored in keychain 并带锁图标，也就是存进系统钥匙串，界面里不明文显示。保存前可以点 Test connection 先测试。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="images/web/3-import-servers.png" alt="Add MCP 对话框选择 Import：识别出 redshift、rds-postgres、bedrock-kb 三个 stdio server，可勾选后一次导入" width="860" height="741" loading="lazy" style="max-width:min(100%,560px)">
+    <figcaption><strong>3 一次导入。</strong>连接类型选 Import，选中 MCP 配置文件，Quick 识别为 Kiro / Claude Code 格式，列出 3 个 server（redshift、rds-postgres、bedrock-kb），默认全选。可以 Expand all 查看每个的参数，也可以 Deselect all 后只勾需要的，最后点 Import 3 servers。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="images/web/4-chat.png" alt="在 Quick 对话里问“查看 redshift 的销售数据，确认趋势”，Agent 经过 7 个步骤给出结论和月度营收表" width="1100" height="698" loading="lazy">
+    <figcaption><strong>4 对话查询。</strong>直接说“查看redshift的销售数据，确认趋势”。Agent 自己发现工作组、表和列，执行 SQL（折叠的 7 steps），给出结论、月度营收表和要点：销售趋势基本持平，没有明显增长或下滑。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="images/web/5-chart.png" alt="接着说“绘制图表”，Quick 用查到的数据画出月度总营收折线图" width="1100" height="751" loading="lazy">
+    <figcaption><strong>5 出图。</strong>接着说“绘制图表”，Quick 用刚查到的数据画出月度总营收折线图。最后一个点是 10 月，只到 23 日，是不完整月份。</figcaption>
+  </figure>
+
+  <h3>B 企业最佳实践：Cognito + AgentCore Gateway（Quick 云端 MCP 连接器，自动换令牌）</h3>
+  <p>管理员先按第 4 节搭好 Gateway 和 Cognito，然后在 Quick 里建<strong>一个 MCP 连接器</strong>，认证方式选<strong>服务间 OAuth（Service-to-service OAuth）</strong>。Quick 用 Client ID、Client secret 和 Token URL 自己向 Cognito 换令牌，过期自动续，用户不需要碰令牌。创建后，在 Quick Desktop 登录同一账号，就能在 Customize → Connectors 里看到它，并在 Agent 里使用（见下面的截图）。</p>
+
+  <ol class="steps">
+    <li>
+      <h4>从 AgentCore 取 Gateway 地址</h4>
+      <p>地址以 <code>/mcp</code> 结尾，填在连接器的 URL 字段。</p>
+      <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>aws bedrock-agentcore-control get-gateway --gateway-identifier &lt;GATEWAY_ID&gt; \
+  --query gatewayUrl --output text</code></pre></div>
+    </li>
+    <li>
+      <h4>从 Cognito 取“换令牌”需要的值</h4>
+      <p>Token URL 由域名前缀和区域拼成；Client ID 来自 app client；Client secret 放在 Secrets Manager 里。</p>
+      <div class="codewrap"><button class="copy" type="button">复制</button><pre><code># 域名前缀 → Token URL = https://&lt;域名前缀&gt;.auth.&lt;区域&gt;.amazoncognito.com/oauth2/token
+aws cognito-idp describe-user-pool --user-pool-id &lt;POOL_ID&gt; --query UserPool.Domain --output text
+# app client 的名称与 Client ID
+aws cognito-idp list-user-pool-clients --user-pool-id &lt;POOL_ID&gt; \
+  --query "UserPoolClients[].[ClientName,ClientId]" --output text</code></pre></div>
+      <p>Client secret <strong>不要显示出来</strong>，需要时直接送进剪贴板，粘贴到 Quick 的表单里：</p>
+      <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>aws secretsmanager get-secret-value --secret-id &lt;密钥名&gt; --query SecretString --output text \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["client_secret"], end="")' | pbcopy</code></pre></div>
+    </li>
+    <li>
+      <h4>在 Quick 里创建 MCP 连接器</h4>
+      <p>入口：Quick 的 Connectors 页 → <strong>Create for your team</strong> → <strong>Model Context Protocol</strong>。下面的截图是在 Quick 网页版里创建的；Desktop 的 Create 菜单里也有 Cloud connector（见上面 A 的截图 1），本次我没用它。创建是一个五步向导：Connect、Authenticate、Manage Write Permissions、Manage Read Permissions、Publish。字段如下：</p>
+    </li>
+  </ol>
+
+  <div class="tablewrap">
+  <table>
+    <caption>云端 MCP 连接器字段与来源</caption>
+    <thead><tr><th>字段</th><th>填什么</th><th>来源</th></tr></thead>
+    <tbody>
+      <tr><td>Name</td><td>例如 <code>AWS MCP Gateway</code></td><td>自定</td></tr>
+      <tr><td>Description</td><td>英文短句，说明数据源和使用提示</td><td>自定</td></tr>
+      <tr><td>MCP server URL（Base URL）</td><td>Gateway 地址，以 <code>/mcp</code> 结尾</td><td>AgentCore Gateway</td></tr>
+      <tr><td>Authentication</td><td><strong>Service-to-service OAuth</strong></td><td>—</td></tr>
+      <tr><td>Client ID</td><td>app client 的编号，不算秘密</td><td>Cognito</td></tr>
+      <tr><td>Client secret</td><td>app client 的密钥，相当于密码，不要贴到聊天或文档里</td><td>Secrets Manager</td></tr>
+      <tr><td>Token URL</td><td><code>https://&lt;域名前缀&gt;.auth.&lt;区域&gt;.amazoncognito.com/oauth2/token</code></td><td>Cognito</td></tr>
+      <tr><td>VPC connection（资源服务器、认证服务器）</td><td><strong>Public network</strong>。Gateway 与 Cognito 都是公网端点</td><td>—</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <ol class="steps" start="4">
+    <li>
+      <h4>Review 工具并发布</h4>
+      <p>下一步 Quick 会列出 Gateway 暴露的全部工具（名称带目标前缀，如 <code>redshift-lambda-target___list_clusters</code>）。只勾选需要的，再选择谁可以使用，然后 Publish。</p>
+    </li>
+    <li>
+      <h4>在 Desktop 里使用</h4>
+      <p>登录同一个 Quick 账号，在 Desktop 的 Connectors 里能看到这个连接器，状态显示 <code>Connected and ready to use with your agents</code>（云端截图 7）。令牌由 Quick 自动换，不用手动更新。</p>
+    </li>
+  </ol>
+
+  <ul>
+    <li>实测：用 Cognito 的 client 凭证建连接器，状态为 Ready，Gateway 上的 Redshift 与 PostgreSQL 工具都已注册。</li>
+    <li>Gateway 用普通 HTTP POST 加 Bearer 令牌实测：<code>tools/list</code> 返回 200；不带令牌或带错误令牌返回 401。</li>
+    <li>Quick 把工具列表当静态的。Gateway 新增目标（例如加了知识库）后，要在连接器里重新 Sync 或重新建立连接，新工具才会出现。</li>
+    <li>Quick 会把 <code>run_query</code>、<code>execute_query</code> 这类能执行 SQL 的工具标成 Write。这是按工具判断的，不代表数据库真能写，真正的写权限由数据库用户决定。调用前 Quick 会弹出“允许”确认。</li>
+    <li>Client secret 是整个 Gateway 的钥匙，可以调用所有目标的工具。不要贴到聊天或文档里；怀疑泄露就在 Cognito 里轮换。</li>
+  </ul>
+
+  <h3>B 演示：云端 MCP 连接器从创建到 Desktop 使用（截图）</h3>
+  <figure class="shot">
+    <img src="images/web/c1-connectors-mcp-card.png" alt="Quick 的 Connectors 页，Create for your team 标签下的 Model Context Protocol 卡片" width="1100" height="316" loading="lazy">
+    <figcaption><strong>云端 1 入口。</strong>Connectors 页切到 Create for your team，选 Model Context Protocol 卡片。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="images/web/c2-already-enabled.png" alt="弹窗提示已经启用了 Model Context Protocol 连接器，可以选择 No, create new" width="1000" height="236" loading="lazy">
+    <figcaption><strong>云端 2 已有同类连接器时的提示。</strong>如果账号里已经有 MCP 连接器，会弹出提示：同一类型的连接器多了，可能引起登录问题，或者把数据发到错误的目的地。确认要新建就点 No, create new；中间的现有连接器列表我省略了。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="images/web/c3-connect.png" alt="Connect 步骤：填写 Name、Description、MCP server endpoint，Connection type 与 Auth connection type 都选 Public network" width="1000" height="395" loading="lazy">
+    <figcaption><strong>云端 3 Connect。</strong>填 Name、Description 和 MCP server endpoint（Gateway 地址，以 <code>/mcp</code> 结尾，截图里的 Gateway 编号已用占位符遮住）。Connection type 与 Auth connection type 都选 Public network。下一步 Authenticate 选服务间 OAuth，填 Client ID、Client secret、Token URL（字段见上表，这一步我没有截图）。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="images/web/c4-write-permissions.png" alt="Manage Write Permissions 步骤：列出 3 个写操作工具，默认 Let users choose，另一个选项是 Always ask" width="1000" height="586" loading="lazy">
+    <figcaption><strong>云端 4 写权限。</strong>Quick 把 3 个工具归为 Write：知识库的 <code>QueryKnowledgeBases</code>、PostgreSQL 的 <code>run_query</code>、Redshift 的 <code>execute_query</code>。默认 Let users choose（用户首次使用时自己选），也可以改成 Always ask（每次运行前都要批准）。能执行 SQL 的工具，企业环境建议用 Always ask。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="images/web/c5-read-permissions.png" alt="Manage Read Permissions 步骤：8 个读操作工具，默认 Let users choose" width="1000" height="586" loading="lazy">
+    <figcaption><strong>云端 5 读权限。</strong>其余 8 个工具归为 Read，选项相同。3 个写加 8 个读，正好是 Gateway 上的 11 个工具。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="images/web/c6-publish.png" alt="Publish 步骤：默认只有自己可用，可打开 Everyone in your organization" width="1000" height="219" loading="lazy">
+    <figcaption><strong>云端 6 发布。</strong>默认只有创建者自己能用，可以打开 Everyone in your organization 共享给全组织。页面上写明：这个连接使用服务间认证，不需要用户单独登录，访问由服务凭证管理，<strong>不能在 Chat 或 Flows 里使用</strong>。</figcaption>
+  </figure>
+  <figure class="shot">
+    <img src="images/web/c7-desktop.png" alt="Quick Desktop 的连接器详情：状态为 Connected and ready to use with your agents，并列出每个工具的 Action permissions" width="640" height="780" loading="lazy" style="max-width:min(100%,420px)">
+    <figcaption><strong>云端 7 Desktop 里的连接器。</strong>Customize → Connectors 里出现这个连接器（By me · Cloud），状态是 Connected and ready to use with your agents。右侧 Action permissions 可以给每个工具选 Ask each time、Always allow 或 Always deny，Try it 可以直接试用。</figcaption>
+  </figure>
+
+</section>
+
+
+<!-- ================= 3 MCP 介绍与支持的服务 ================= -->
+<section id="mcp" aria-labelledby="h-mcp">
+  <h2 id="h-mcp">3 MCP 介绍与支持的服务</h2>
+
+  <h3>MCP 是什么</h3>
+  <p>MCP（Model Context Protocol，模型上下文协议）是一个开放标准，规定 AI 应用怎样连接外部的数据和工具。可以把它看成“AI 应用的 USB 接口”：工具方按统一格式暴露能力，AI 应用按统一格式发现和调用，不用为每个系统写一套专用集成。</p>
+
+  <div class="grid g3">
+    <div class="card"><h4>MCP 客户端</h4><p>AI 应用一侧，例如 Amazon Quick、Kiro、Claude。它连接服务端，把服务端的工具交给模型选择和调用。</p></div>
+    <div class="card"><h4>MCP 服务端</h4><p>暴露工具的一侧。每个工具有名称、描述和参数定义（JSON Schema）。例如 <code>execute_query</code>、<code>QueryKnowledgeBases</code>。</p></div>
+    <div class="card"><h4>一次调用</h4><p>客户端先 <code>tools/list</code> 发现有哪些工具，模型决定调用哪个，客户端发 <code>tools/call</code>，服务端执行并返回结果。</p></div>
+  </div>
+
+  <h3>在 Amazon Quick 里意味着什么</h3>
+  <ul>
+    <li>MCP 服务端的每个工具会注册成一个 <strong>Action</strong>，管理员逐个审阅并开启，Agent 才能调用。</li>
+    <li>调用前 Quick 会弹出“允许”确认，可以把用户放在回路里。</li>
+    <li>连接器本身有三个权限：创建与更新、共享、使用，用来控制谁能建、谁能用。</li>
+    <li>工具的描述很重要：Agent 靠它判断什么时候用哪个工具。描述写错会让 Agent 误判，例如把“写操作被拒绝”写进描述，Agent 就不会尝试写入。</li>
+  </ul>
+
+  <h3>AWS 提供的 MCP 有三类</h3>
+  <ul>
+    <li><strong>awslabs/mcp 开源仓库：</strong>为各个服务写的 MCP server，本次用的就是这一类。需要自己运行，版本和兼容性自己负责（本次实测遇到过依赖冲突和启动参数问题）。该仓库的说明提到后继项目是 Agent Toolkit for AWS，新项目建议关注。</li>
+    <li><strong>AWS 托管的 MCP Server：</strong>由 AWS 运行，覆盖几乎所有 AWS API，用 SigV4 或 OAuth 2.1 访问；它只能调 AWS API，所以对没有 Data API 的普通 RDS 查不了行数据。</li>
+    <li><strong>自己托管：</strong>把上面任一类放到 AgentCore（Gateway 加 Lambda，或 Runtime）。企业场景用它给 Quick 提供统一的云端入口。</li>
+  </ul>
+
+  <h3>支持哪些服务</h3>
+  <p>下表按 <code>awslabs/mcp</code> 仓库 <code>src/</code> 目录里的 MCP server 归类（共 63 个目录，2026-10-22 核对）。归类按名称，具体能力以各自的 README 为准；PyPI 包名一般是 <code>awslabs.&lt;目录名&gt;</code>。</p>
+
+  <div class="tablewrap">
+  <table>
+    <caption>AWS 官方（awslabs）MCP server 一览</caption>
+    <thead><tr><th>领域</th><th>MCP server</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>数据仓库与关系型数据库</td>
+        <td><code>redshift-mcp-server</code>、<code>postgres-mcp-server</code>、<code>mysql-mcp-server</code>、<code>aurora-dsql-mcp-server</code>、<code>oracle-mcp-server</code>、<code>mssql-mcp-server</code>、<code>db2-mcp-server</code></td>
+        
+      </tr>
+      <tr>
+        <td>NoSQL、缓存、图、时序</td>
+        <td><code>dynamodb-mcp-server</code>、<code>documentdb-mcp-server</code>、<code>elasticache-mcp-server</code>、<code>valkey-mcp-server</code>、<code>memcached-mcp-server</code>、<code>amazon-neptune-mcp-server</code>、<code>amazon-keyspaces-mcp-server</code>、<code>timestream-for-influxdb-mcp-server</code>、<code>s3-tables-mcp-server</code></td>
+        
+      </tr>
+      <tr>
+        <td>数据处理与分析</td>
+        <td><code>aws-dataprocessing-mcp-server</code>（Glue、Athena、EMR）、<code>sagemaker-unified-studio-spark-troubleshooting-mcp-server</code>、<code>sagemaker-unified-studio-spark-upgrade-mcp-server</code></td>
+        
+      </tr>
+      <tr>
+        <td>RAG、检索与生成式 AI</td>
+        <td><code>bedrock-kb-retrieval-mcp-server</code>、<code>amazon-kendra-index-mcp-server</code>、<code>amazon-qindex-mcp-server</code>、<code>amazon-qbusiness-anonymous-mcp-server</code>、<code>aws-bedrock-custom-model-import-mcp-server</code>、<code>sagemaker-ai-mcp-server</code>、<code>amazon-bedrock-agentcore-mcp-server</code>、<code>amazon-translate-mcp-server</code>、<code>document-loader-mcp-server</code></td>
+        
+      </tr>
+      <tr>
+        <td>计算、容器与无服务器</td>
+        <td><code>eks-mcp-server</code>、<code>ecs-mcp-server</code>、<code>finch-mcp-server</code>、<code>aws-serverless-mcp-server</code>、<code>lambda-tool-mcp-server</code>、<code>stepfunctions-tool-mcp-server</code></td>
+        
+      </tr>
+      <tr>
+        <td>消息与应用集成</td>
+        <td><code>amazon-sns-sqs-mcp-server</code>、<code>amazon-mq-mcp-server</code>、<code>aws-appsync-mcp-server</code>、<code>openapi-mcp-server</code></td>
+        
+      </tr>
+      <tr>
+        <td>监控、成本、安全与治理</td>
+        <td><code>cloudwatch-mcp-server</code>、<code>cloudwatch-applicationsignals-mcp-server</code>、<code>cloudtrail-mcp-server</code>、<code>prometheus-mcp-server</code>、<code>billing-cost-management-mcp-server</code>、<code>aws-pricing-mcp-server</code>、<code>iam-mcp-server</code>、<code>well-architected-security-mcp-server</code>、<code>security-agent-mcp-server</code>、<code>aws-support-mcp-server</code>、<code>aws-network-mcp-server</code></td>
+        
+      </tr>
+      <tr>
+        <td>基础设施即代码与通用 API</td>
+        <td><code>aws-api-mcp-server</code>、<code>ccapi-mcp-server</code>（Cloud Control API）、<code>aws-iac-mcp-server</code>、<code>aws-transform-mcp-server</code></td>
+        
+      </tr>
+      <tr>
+        <td>文档与知识</td>
+        <td><code>aws-documentation-mcp-server</code>、<code>aws-knowledge-mcp-server</code></td>
+        
+      </tr>
+      <tr>
+        <td>行业与其他</td>
+        <td><code>healthlake-mcp-server</code>、<code>healthimaging-mcp-server</code>、<code>aws-healthomics-mcp-server</code>、<code>aws-iot-sitewise-mcp-server</code>、<code>aws-location-mcp-server</code>、<code>aws-for-sap-management-mcp-server</code>、<code>roda-mcp-server</code>（开放数据注册表）</td>
+        
+      </tr>
+      <tr>
+        <td>开发框架</td>
+        <td><code>mcp-lambda-handler</code>（把自己的 MCP 服务放进 Lambda 的框架，不是对应某个服务）</td>
+        
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout c-info">
+    <p><strong>怎么选：</strong>先看数据在哪个服务，在上表找同名的 server；再看接法：个人和小团队用 Local 连接器直接在本机运行；企业场景用云端 MCP 连接器，像本方案这样挂到 AgentCore。托管的 AWS MCP Server 能调用几乎所有 AWS API，但它没有专用的查询工具，也没有只读保护，用管理员权限运行风险很大。</p>
+  </div>
+</section>
+
+
+<!-- ================= 4 MCP server on AgentCore 搭建方式 ================= -->
+<section id="build" aria-labelledby="h-build">
+  <h2 id="h-build">4 MCP server on AgentCore 搭建方式</h2>
+  <p class="lead">完整的搭建步骤、脚本和踩坑记录见 GitHub 上的 <code>AGENTS.md</code>，这里不再列出。全程使用 AWS CLI，不用 CDK 或 CloudFormation；把该文档交给 AI Agent（如 Kiro）即可按序执行。</p>
+  <p><a href="https://github.com/zanbei/quick-mcp-aws-demo/blob/main/AGENTS.md" target="_blank" rel="noopener">github.com/zanbei/quick-mcp-aws-demo · AGENTS.md</a></p>
+</section>
+
+<!-- ================= 5 权限授予 ================= -->
+<section id="perm" aria-labelledby="h-perm">
+  <h2 id="h-perm">5 权限授予</h2>
+  <p class="lead">权限分层授予，任何一层收紧都能阻止越权。最后一层（数据库用户权限）才是真正的边界；服务端的“只读”开关和 Agent 的确认弹窗都是辅助。</p>
+
+  <div class="layers">
+    <div class="layer"><div class="n">1</div><div>
+      <h4>Quick：谁能创建、共享、使用连接器</h4>
+      <p>需要 Enterprise 订阅。每个 MCP 连接器有三个自定义权限：<strong>Create and update action</strong>、<strong>Share action</strong>、<strong>Use action</strong>。工具发现后默认不可用，需管理员逐个开启 Action。每次调用前用户还要点“允许”。</p>
+    </div></div>
+    <div class="layer"><div class="n">2</div><div>
+      <h4>OAuth：谁能拿到令牌</h4>
+      <p>Cognito app client 只开 <code>client_credentials</code>，只允许一个自定义 scope <code>quick-mcp-demo/invoke</code>。Gateway 用 <code>allowedClients</code> 限定只接受这个 client 的令牌。密钥放 Secrets Manager，生产环境建议轮换，并给 <code>/oauth2/token</code> 挂 WAF。</p>
+    </div></div>
+    <div class="layer"><div class="n">3</div><div>
+      <h4>Gateway 角色：只能调用这一个 Lambda</h4>
+      <p>信任 <code>bedrock-agentcore.amazonaws.com</code>（带 <code>aws:SourceAccount</code> 条件）。不给 <code>bedrock-agentcore:*</code>，不给 Secrets Manager，不给其他函数。</p>
+    </div></div>
+    <div class="layer"><div class="n">4</div><div>
+      <h4>Lambda 角色：只能访问指定的 Redshift 工作组</h4>
+      <p>执行类权限限定到具体工作组 ARN；只有发现类和读取类动作使用 <code>*</code>（这些动作不支持资源级限制）。</p>
+    </div></div>
+    <div class="layer"><div class="n">5</div><div>
+      <h4>MCP server 模式：默认只读</h4>
+      <p>awslabs Redshift MCP 默认每条语句在只读事务里运行。受限写入需要在 Lambda 环境变量里显式设置 <code>ACCESS_MODE=read-write</code>。</p>
+    </div></div>
+    <div class="layer wide"><div class="n">6</div><div>
+      <h4>数据库用户权限：真正的边界</h4>
+      <p>Lambda 角色在库里对应用户 <code>IAMR:&lt;角色名&gt;</code>。只给它需要的表权限；即使 Agent 被诱导生成破坏性语句，数据库也会拒绝。</p>
+    </div></div>
+  </div>
+
+  <h3>IAM 策略（占位符已替换为变量）</h3>
+  <div class="grid g2">
+    <div>
+      <h4>Lambda 角色：Redshift 访问</h4>
+      <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Sid": "Discovery", "Effect": "Allow",
+      "Action": ["redshift:DescribeClusters",
+                 "redshift-serverless:ListWorkgroups"],
+      "Resource": "*" },
+    { "Sid": "ServerlessCredentials", "Effect": "Allow",
+      "Action": ["redshift-serverless:GetCredentials"],
+      "Resource": "arn:aws:redshift-serverless:us-east-1:&lt;ACCOUNT_ID&gt;:workgroup/&lt;WORKGROUP_ID&gt;" },
+    { "Sid": "DataApiRun", "Effect": "Allow",
+      "Action": ["redshift-data:ExecuteStatement",
+                 "redshift-data:BatchExecuteStatement"],
+      "Resource": "arn:aws:redshift-serverless:us-east-1:&lt;ACCOUNT_ID&gt;:workgroup/&lt;WORKGROUP_ID&gt;" },
+    { "Sid": "DataApiRead", "Effect": "Allow",
+      "Action": ["redshift-data:DescribeStatement",
+                 "redshift-data:GetStatementResult"],
+      "Resource": "*" }
+  ]
+}</code></pre></div>
+    </div>
+    <div>
+      <h4>Gateway 角色：信任与调用</h4>
+      <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>// 信任策略
+{ "Version": "2012-10-17",
+  "Statement": [{ "Effect": "Allow",
+    "Principal": { "Service": "bedrock-agentcore.amazonaws.com" },
+    "Action": "sts:AssumeRole",
+    "Condition": { "StringEquals": { "aws:SourceAccount": "&lt;ACCOUNT_ID&gt;" } } }] }
+
+// 权限策略
+{ "Version": "2012-10-17",
+  "Statement": [{ "Effect": "Allow",
+    "Action": "lambda:InvokeFunction",
+    "Resource": [
+      "arn:aws:lambda:us-east-1:&lt;ACCOUNT_ID&gt;:function:quick-mcp-demo-redshift-mcp",
+      "arn:aws:lambda:us-east-1:&lt;ACCOUNT_ID&gt;:function:quick-mcp-demo-redshift-mcp:*" ] }] }</code></pre></div>
+    </div>
+  </div>
+
+  <h3>Redshift 库内授权</h3>
+  <div class="grid g2">
+    <div class="card">
+      <h4>只读（默认）</h4>
+      <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>GRANT SELECT ON public.demo_sales, public.demo_products
+  TO "IAMR:quick-mcp-demo-lambda-role";</code></pre></div>
+    </div>
+    <div class="card">
+      <h4>受限写入（当前演示状态）</h4>
+      <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>GRANT INSERT ON public.demo_sales, public.demo_products
+  TO "IAMR:quick-mcp-demo-lambda-role";
+-- 不授予 UPDATE / DELETE / TRUNCATE / DROP
+-- public schema 的建表权限本来就对所有用户开放</code></pre></div>
+    </div>
+  </div>
+
+  <div class="callout c-risk">
+    <p><strong>当前演示环境的 MCP 处于受限写入状态。</strong></p>
+    <p>Lambda 环境变量为 <code>ACCESS_MODE=read-write</code> 加 <code>UNSAFE_SKIP_WRITE_CONFIRMATION=true</code>。后者按 awslabs 文档是必须的：读写模式下服务端会通过 MCP 的 elicitation 逐条确认写语句，而 Lambda 加 Gateway 这条链路无法弹出确认。这意味着服务端的逐条确认已关闭，防线只剩 Quick 的调用前确认和数据库权限。</p>
+    <p>所以：不要给这个库用户 UPDATE、DELETE 或管理员权限；写入前先拍快照（已拍 <code>quick-mcp-demo-pre-write</code>，保留 7 天）；演示完恢复只读（<code>disable_write.sh</code>，该脚本只做过语法检查，未实际运行）。</p>
+  </div>
+
+  <h3>其他权限要点</h3>
+  <div class="grid g3">
+    <div class="card"><h4>构建者需要的权限</h4><p>创建 IAM 角色、Lambda、S3 桶、Cognito、Secrets Manager、AgentCore Gateway 的权限，以及以表所有者身份执行 <code>GRANT</code> 的数据库权限。我没有做最小化梳理。</p></div>
+    <div class="card"><h4>密钥</h4><p>Cognito 客户端密钥和数据库密码只放 Secrets Manager，不写进文档、代码仓库或 CloudFormation Outputs。</p></div>
+    <div class="card"><h4>AWS profile 与托管 MCP</h4><p>本地连接器和托管 AWS MCP Server 都用本机 AWS profile 的权限运行。管理员 profile 会让 Agent 能调用任意 API（包括删除、创建集群），请换成只读或范围很小的角色；托管服务带有 <code>aws:ViaAWSMCPService</code> 条件键，可用来限制 AI 发起的操作。</p></div>
+    <div class="card"><h4>网络</h4><p>Gateway 与 Cognito 令牌端点是公网 HTTPS，由 JWT 保护。Lambda 到 Redshift 走 Data API，不需要给数据库开入站端口。MCP 服务若在内网，需先建 Quick VPC 连接。</p></div>
+  </div>
+</section>
+
+<!-- ================= 6 网络安全 ================= -->
+<section id="net" aria-labelledby="h-net">
+  <h2 id="h-net">6 网络安全（推荐私网 / 白名单）</h2>
+  <p class="lead">原则：能走私网就走私网；做不到私网时，用白名单把可达范围缩到最小，并让 JWT、IAM、数据库权限继续兜底。演示环境为了快速联调用的是“公网 + 白名单”，生产环境应按下表改成私网。</p>
+
+  <div class="callout c-risk">
+    <p><strong>演示环境的现状（不要直接照搬到生产）：</strong></p>
+    <ul>
+      <li>Gateway 和 Cognito 令牌端点是公网 HTTPS，靠 JWT 保护，未授权请求返回 401（已实测）。</li>
+      <li>Redshift 工作组和演示 RDS 实例都设为公网可访问。数据库安全组放行了 Quick 的区域 IP 段（us-east-1：<code>52.23.63.224/27</code>），RDS 安全组还放行了操作机轮换出口的 <code>/29</code> 地址池。</li>
+      <li>放行 Redshift 的安全组是 VPC 的 default 组，同一 VPC 里使用它的其他资源也会受这条规则影响。</li>
+    </ul>
+  </div>
+
+  <div class="tablewrap">
+  <table>
+    <caption>逐段链路：现在怎么做、推荐怎么做、最低要求</caption>
+    <thead><tr><th>链路</th><th>演示现状</th><th>推荐（私网）</th><th>最低要求（白名单）</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Quick → MCP 端点（AgentCore Gateway）</td>
+        <td>公网 HTTPS，JWT 校验</td>
+        <td>在 VPC 里创建 Gateway 的接口端点 <code>com.amazonaws.&lt;region&gt;.bedrock-agentcore.gateway</code>，Quick 通过 <strong>Quick VPC 连接</strong>访问（创建 MCP 连接器时 Connection type 选该 VPC 连接）</td>
+        <td>保持 JWT 校验和 <code>allowedClients</code>。Gateway 按源 IP 限制的原生能力我没有找到，<span class="badge b-warn">未验证</span></td>
+      </tr>
+      <tr>
+        <td>Quick → 授权服务器（Cognito 令牌端点）</td>
+        <td>公网</td>
+        <td>授权服务器放进 VPC 内可达，并给连接器设置 <strong>auth-server VPC 连接</strong>。Cognito 的令牌端点本身是公网接口</td>
+        <td>给 <code>/oauth2/token</code> 挂 WAF（限流、必要时 IP 白名单）；密钥放 Secrets Manager 并轮换</td>
+      </tr>
+      <tr>
+        <td>Gateway → Lambda</td>
+        <td>AWS 内部，由 Gateway 角色调用</td>
+        <td>同左，无需公网</td>
+        <td>Gateway 角色只允许调用这一个函数（已做）</td>
+      </tr>
+      <tr>
+        <td>Lambda → Redshift / Secrets Manager</td>
+        <td>Lambda 不在 VPC 内，走 Redshift Data API 的公网 HTTPS 端点，IAM 签名；数据库不需要开入站端口</td>
+        <td>Lambda 放进 VPC，通过接口端点访问 Data API、Secrets Manager、STS，不经公网出口（端点服务名以官方文档为准）</td>
+        <td>IAM 策略限定到具体工作组 ARN（已做）</td>
+      </tr>
+      <tr>
+        <td>Lambda → RDS PostgreSQL</td>
+        <td>Lambda 在 VPC 内，RDS 安全组只放行 Lambda 的安全组（5432），走私网地址；Secrets Manager 与 RDS API 经接口端点，私有 DNS 关闭 <span class="badge b-ok">已验证</span></td>
+        <td>同左；生产环境再把 RDS 设为非公网可访问，并考虑多可用区</td>
+        <td>安全组引用，不使用 CIDR</td>
+      </tr>
+      <tr>
+        <td>开发运维 → 数据库</td>
+        <td>放行操作机的轮换出口地址池（演示用）</td>
+        <td>通过 SSM Session Manager、堡垒机或 VPN 访问，不对公网开放</td>
+        <td>只放行固定出口的 <code>/32</code>，用完撤销</td>
+      </tr>
+      <tr>
+        <td>数据库公网可访问开关</td>
+        <td>Redshift：开；演示 RDS：开</td>
+        <td>关闭（<code>PubliclyAccessible=false</code>），放在私有子网</td>
+        <td>必须开时，配合上面的安全组白名单</td>
+      </tr>
+      <tr>
+        <td>本说明页面（CloudFront）</td>
+        <td>公开可访问，响应头带 <code>noindex</code></td>
+        <td>放在 WAF IP 白名单之后，或使用签名 URL</td>
+        <td>至少加 <code>noindex</code> 和安全响应头</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>从演示改成私网的步骤</h3>
+  <ol class="steps">
+    <li>
+      <h4>创建 Quick VPC 连接</h4>
+      <p>需要一个执行角色（信任 Quick 服务主体，权限含 <code>ec2:CreateNetworkInterface</code>、<code>ModifyNetworkInterfaceAttribute</code>、<code>DeleteNetworkInterface</code>、<code>DescribeSubnets</code>、<code>DescribeSecurityGroups</code>）。选择子网和一个专用安全组。</p>
+    </li>
+    <li>
+      <h4>为 MCP 端点配置私网解析</h4>
+      <p>Quick 对 MCP 集成<strong>不使用 VPC 默认 DNS</strong>。必须在 VPC 连接的 <em>DNS resolver endpoints</em> 字段填入 Route 53 Resolver 入站端点的 IP，否则 MCP 主机名无法解析，连接器创建失败。这一条同样适用于经 PrivateLink 暴露的公网主机名。</p>
+    </li>
+    <li>
+      <h4>创建 AgentCore 接口端点</h4>
+      <p>AgentCore 提供三个 PrivateLink 端点：数据面 <code>bedrock-agentcore</code>、控制面 <code>bedrock-agentcore-control</code>、Gateway <code>bedrock-agentcore.gateway</code>。访问 Gateway 用最后一个，并启用私有 DNS。</p>
+      <p><span class="badge b-warn">注意</span> 端点策略只能按 IAM 主体限制调用方，不能按 OAuth 用户限制；要让 OAuth 请求通过，端点策略的 Principal 必须是 <code>*</code>。所以身份控制要靠 JWT、<code>allowedClients</code> 和端点的安全组。</p>
+    </li>
+    <li>
+      <h4>数据库改为私网</h4>
+      <p>关闭公网可访问，放进私有子网；数据库安全组改为引用 Quick VPC 连接的安全组（入站数据库端口），Quick 连接的安全组出站放行到数据库安全组。删除放行 Quick IP 段和操作机地址池的规则。</p>
+    </li>
+    <li>
+      <h4>Lambda 放进 VPC</h4>
+      <p>给 Lambda 配 VPC 子网和安全组，并创建访问 Redshift Data API、Secrets Manager、STS 所需的接口端点；Lambda 角色加上网络接口相关权限。</p>
+    </li>
+    <li>
+      <h4>复测</h4>
+      <p>用 <code>test_gateway.py</code> 的同类客户端从 VPC 内测 401、工具列表、查询；在 Quick 里重建连接器并确认工具发现成功。</p>
+    </li>
+  </ol>
+
+  <div class="callout c-warn">
+    <p><strong>以上私网方案来自官方文档，未在演示环境实测。</strong>私网改造会同时改变 DNS、路由和安全组，建议先在非生产环境完整走一遍，再做切换。</p>
+  </div>
+
+  <h3>通用加固清单</h3>
+  <ul>
+    <li>安全组按“最小端口、最小来源”，优先引用安全组而不是 CIDR。</li>
+    <li>不要对 <code>0.0.0.0/0</code> 开放数据库端口或 SSH。</li>
+    <li>白名单要有负责人和到期时间，用完撤销；Quick 的 IP 段变化时要同步更新。</li>
+    <li>开启 CloudTrail，并关注 <code>CreateOAuth2Token</code> 类事件与 Gateway 调用。</li>
+    <li>Quick 管理员可通过自定义权限限制谁能创建、共享、使用该连接器，并核对出站连接与数据外发范围。</li>
+  </ul>
+</section>
+
+
+</main>
+
+<footer>
+  <p>验证环境：us-east-1，2026-10。内容基于 Quick、AgentCore、Redshift 官方文档与 awslabs/mcp 仓库，并结合实测整理；与官方描述冲突时以官方最新文档为准。</p>
+  <p>参考：<a href="https://docs.aws.amazon.com/quick/latest/userguide/mcp-integration.html">Quick MCP 集成</a> ·
+     <a href="https://github.com/awslabs/mcp">awslabs/mcp</a> ·
+     <a href="https://aws.amazon.com/blogs/machine-learning/connect-an-agentcore-runtime-hosted-mcp-server-to-amazon-quick/">AgentCore 托管 MCP 并接入 Quick</a> ·
+     <a href="https://aws-samples.github.io/sample-amazon-quick-suite-knowledge-hub/integration/mcp/redshift-data-query-mcp/">Redshift MCP sample</a></p>
+</footer>
+
+<script>
+  document.querySelectorAll('.copy').forEach(function (btn) {
+    btn.setAttribute('aria-label', '复制该代码块');
+    btn.addEventListener('click', function () {
+      var code = btn.parentElement.querySelector('pre code');
+      var text = code ? code.innerText : '';
+      function done(ok) {
+        var old = btn.textContent;
+        btn.textContent = ok ? '已复制' : '复制失败';
+        setTimeout(function () { btn.textContent = old; }, 1500);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+      } else {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text; document.body.appendChild(ta); ta.select();
+          done(document.execCommand('copy')); document.body.removeChild(ta);
+        } catch (e) { done(false); }
+      }
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+[
+  {
+    "name": "list_clusters",
+    "description": "Discover all Amazon Redshift provisioned clusters and serverless workgroups. Call this first to get cluster_identifier and cluster_type for the other tools.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "list_databases",
+    "description": "List databases in a Redshift cluster or serverless workgroup.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "cluster_identifier": {
+          "type": "string",
+          "description": "Cluster identifier from list_clusters."
+        },
+        "cluster_type": {
+          "type": "string",
+          "description": "Cluster type reported by list_clusters: provisioned or serverless."
+        },
+        "database_name": {
+          "type": "string",
+          "description": "Database to connect to for metadata discovery. Defaults to dev."
+        }
+      },
+      "required": [
+        "cluster_identifier",
+        "cluster_type"
+      ]
+    }
+  },
+  {
+    "name": "list_schemas",
+    "description": "List schemas in a database.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "cluster_identifier": {
+          "type": "string",
+          "description": "Cluster identifier from list_clusters."
+        },
+        "cluster_type": {
+          "type": "string",
+          "description": "Cluster type reported by list_clusters: provisioned or serverless."
+        },
+        "schema_database_name": {
+          "type": "string",
+          "description": "Database name to list schemas for."
+        }
+      },
+      "required": [
+        "cluster_identifier",
+        "cluster_type",
+        "schema_database_name"
+      ]
+    }
+  },
+  {
+    "name": "list_tables",
+    "description": "List tables and views in a schema.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "cluster_identifier": {
+          "type": "string",
+          "description": "Cluster identifier from list_clusters."
+        },
+        "cluster_type": {
+          "type": "string",
+          "description": "Cluster type reported by list_clusters: provisioned or serverless."
+        },
+        "table_database_name": {
+          "type": "string",
+          "description": "Database name containing the schema."
+        },
+        "table_schema_name": {
+          "type": "string",
+          "description": "Schema name to list tables for."
+        }
+      },
+      "required": [
+        "cluster_identifier",
+        "cluster_type",
+        "table_database_name",
+        "table_schema_name"
+      ]
+    }
+  },
+  {
+    "name": "list_columns",
+    "description": "List columns of a table with data types and nullability.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "cluster_identifier": {
+          "type": "string",
+          "description": "Cluster identifier from list_clusters."
+        },
+        "cluster_type": {
+          "type": "string",
+          "description": "Cluster type reported by list_clusters: provisioned or serverless."
+        },
+        "column_database_name": {
+          "type": "string",
+          "description": "Database name containing the table."
+        },
+        "column_schema_name": {
+          "type": "string",
+          "description": "Schema name containing the table."
+        },
+        "column_table_name": {
+          "type": "string",
+          "description": "Table name to list columns for."
+        }
+      },
+      "required": [
+        "cluster_identifier",
+        "cluster_type",
+        "column_database_name",
+        "column_schema_name",
+        "column_table_name"
+      ]
+    }
+  },
+  {
+    "name": "execute_query",
+    "description": "Run a single SQL statement against Redshift (SELECT, and INSERT/CREATE TABLE where the database user is permitted). Statements the database user is not permitted to run fail with a permission error.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "cluster_identifier": {
+          "type": "string",
+          "description": "Cluster identifier from list_clusters."
+        },
+        "cluster_type": {
+          "type": "string",
+          "description": "Cluster type reported by list_clusters: provisioned or serverless."
+        },
+        "database_name": {
+          "type": "string",
+          "description": "Database to run the query against."
+        },
+        "sql": {
+          "type": "string",
+          "description": "A single SQL statement."
+        }
+      },
+      "required": [
+        "cluster_identifier",
+        "cluster_type",
+        "database_name",
+        "sql"
+      ]
+    }
+  }
+]

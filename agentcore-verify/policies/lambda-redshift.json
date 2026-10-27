@@ -1,0 +1,6 @@
+{"Version":"2012-10-17","Statement":[
+ {"Sid":"Discovery","Effect":"Allow","Action":["redshift:DescribeClusters","redshift-serverless:ListWorkgroups"],"Resource":"*"},
+ {"Sid":"ServerlessCredentials","Effect":"Allow","Action":["redshift-serverless:GetCredentials"],"Resource":"arn:aws:redshift-serverless:__REGION__:__ACCT__:workgroup/__WG_ID__"},
+ {"Sid":"DataApiRun","Effect":"Allow","Action":["redshift-data:ExecuteStatement","redshift-data:BatchExecuteStatement"],"Resource":"arn:aws:redshift-serverless:__REGION__:__ACCT__:workgroup/__WG_ID__"},
+ {"Sid":"DataApiRead","Effect":"Allow","Action":["redshift-data:DescribeStatement","redshift-data:GetStatementResult"],"Resource":"*"}
+]}

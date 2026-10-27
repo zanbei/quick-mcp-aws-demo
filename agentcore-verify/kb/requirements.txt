@@ -1,0 +1,2 @@
+run-mcp-servers-with-aws-lambda
+mcp>=1.23,<2

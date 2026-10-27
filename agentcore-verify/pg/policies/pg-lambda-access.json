@@ -1,0 +1,6 @@
+{"Version":"2012-10-17","Statement":[
+ {"Sid":"ReadOnlyDbSecret","Effect":"Allow","Action":["secretsmanager:GetSecretValue","secretsmanager:DescribeSecret"],
+  "Resource":"arn:aws:secretsmanager:__REGION__:__ACCT__:secret:__NAME__/pg-readonly-*"},
+ {"Sid":"DescribeInstancesMetadataOnly","Effect":"Allow","Action":["rds:DescribeDBInstances"],
+  "Resource":"arn:aws:rds:__REGION__:__ACCT__:db:*"}
+]}

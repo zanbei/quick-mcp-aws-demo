@@ -1,0 +1,1 @@
+awslabs-bedrock-kb-retrieval-mcp-server==1.1.2

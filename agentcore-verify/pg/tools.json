@@ -1,0 +1,25 @@
+[
+  {
+    "name": "list_tables",
+    "description": "List the tables and views in the demo PostgreSQL database (all schemas except system schemas). Call this first to discover what data exists.",
+    "inputSchema": {"type": "object", "properties": {}}
+  },
+  {
+    "name": "get_table_schema",
+    "description": "Return the columns and data types of one table.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {"table_name": {"type": "string", "description": "Table name, for example demo_sales."}},
+      "required": ["table_name"]
+    }
+  },
+  {
+    "name": "run_query",
+    "description": "Run one read-only SQL statement (SELECT) against the demo PostgreSQL database. Data-changing statements are rejected.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {"sql": {"type": "string", "description": "A single SQL statement."}},
+      "required": ["sql"]
+    }
+  }
+]

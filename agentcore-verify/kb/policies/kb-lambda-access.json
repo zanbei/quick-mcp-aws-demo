@@ -1,0 +1,4 @@
+{"Version":"2012-10-17","Statement":[
+ {"Sid":"RetrieveFromTheOneKnowledgeBase","Effect":"Allow","Action":["bedrock:Retrieve"],
+  "Resource":"arn:aws:bedrock:__KB_REGION__:__ACCT__:knowledge-base/__KB_ID__"}
+]}
