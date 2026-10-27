@@ -44,28 +44,13 @@
 | [`scripts/`](scripts/) | 演示数据注入（`seed_*`） |
 | [`test/`](test/) | 本机 MCP 验证（`verify_*_mcp.py` 冒烟测试、`verify_mcp_json.py` 校验 Local 连接器配置） |
 | [`bootstrap/`](bootstrap/) | 创建 Redshift Serverless、RDS PostgreSQL、Bedrock 知识库及示例文档 |
+| [`AGENTS.md`](AGENTS.md)、[`HANDS-ON.md`](HANDS-ON.md) | 从零搭建的 Agent 手册 / 人工分步操作（见"2. Hands-on"） |
 
 要点：Local 用 `uvx` 一条命令拉起 awslabs MCP；Cloud 把 MCP 装进 Lambda，两套依赖分目录（awslabs server 需 mcp 2.x，Lambda 适配库需 mcp 1.x）。Gateway 的工具 schema 不接受 `enum`。
 
 ## 2. Hands-on：client + server（step by step）
 
-手动复现或想看细节时用这部分。
-
-### Server 搭建（见 [`AGENTS.md`](AGENTS.md)）
-
-按 `AGENTS.md` 的阶段依次执行，每个阶段末尾都有 Gate 验收命令，不过不要跳过：
-
-| 阶段 | 做什么 | 产出 |
-|---|---|---|
-| 阶段 1 | 创建数据源并注入数据：Redshift、RDS PostgreSQL、Bedrock 知识库 | 三个数据源可用，演示数据就绪 |
-| 阶段 2（可选） | 本机直连验证（Local awslabs MCP） | 确认数据源能被 MCP 读到 |
-| 阶段 3 | 企业入口：Cognito + AgentCore Gateway + 3 个 Lambda 目标 | `get_token.sh --check` 返回 HTTP 200、11 个工具 |
-
-### Client 配置（Quick 接入）
-
-把搭好的 MCP 接进 Amazon Quick：Local 连接器（本机运行，几分钟配好）或云端 MCP 连接器（AgentCore Gateway + 服务间 OAuth，企业推荐）。图文步骤见讲解页：
-
-<https://d13loqfldp8rtf.cloudfront.net/quick-mcp-demo/index.html#client>
+手动复现或想逐步看清每个环节，见 **[`HANDS-ON.md`](HANDS-ON.md)**：Server 搭建（分阶段，含时间预估和 Gate）、Client 配置（Quick 接入）、验收判据。Server 端约 30–40 分钟，Client 配置约 5–10 分钟。
 
 ---
 
