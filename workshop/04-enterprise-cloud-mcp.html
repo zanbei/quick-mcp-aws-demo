@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>企业最佳实践：Cloud MCP · Workshop</title>
+<link rel="stylesheet" href="assets/workshop.css">
+</head>
+<body data-module="模块 4"
+      data-prev-file="03-quick-local-mcp.html" data-prev-name="模块 3 · Quick 配置 Local MCP">
+<div class="shell">
+
+  <aside>
+    <div class="brand">
+      <div class="kicker">AWS Workshop</div>
+      <h1>用自然语言在 Amazon Quick 查询 AWS 数据<br><span style="font-weight:500;color:#aeb8c4;font-size:.9rem;">MCP · AgentCore · Redshift / RDS / Bedrock KB</span></h1>
+    </div>
+    <nav class="modules" aria-label="模块导航">
+      <ol>
+        <li><a class="mod" href="01-introduction.html">方案介绍与步骤概述</a></li>
+        <li><a class="mod" href="02-sa-build.html">SA 一键搭建 DB / 数仓 / RAG / MCP Server</a></li>
+        <li><a class="mod" href="03-quick-local-mcp.html">Quick 快速配置 Local MCP</a></li>
+        <li class="active">
+          <a class="mod" href="04-enterprise-cloud-mcp.html">企业最佳实践：Cloud MCP</a>
+          <ul class="substeps" id="substeps"></ul>
+        </li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="topbar">Workshop &rsaquo; <b>模块 4 · 企业最佳实践：Cloud MCP</b> &nbsp;·&nbsp; <span id="crumb-step"></span></div>
+    <div class="content">
+      <div class="progress"><i id="progress-bar"></i></div>
+
+      <!-- STEP 1 -->
+      <section class="step" data-title="概述 · 前置与输出">
+        <div class="pagehead">
+          <span class="tag">模块 4 · 步骤 1 · 业务用户</span>
+          <h2>企业最佳实践：Cloud MCP</h2>
+          <p>用 Cognito + AgentCore Gateway 提供统一的、带鉴权的云端 MCP 入口，Lambda 里运行 MCP server。Quick 建<strong>一个</strong>云端连接器、自动换令牌即可使用。凭证和权限集中管理、可审计、可扩展。</p>
+        </div>
+
+        <h3>为什么企业选它</h3>
+        <div class="grid g3">
+          <div class="card"><h4>免本地部署</h4><p style="color:var(--muted);margin:4px 0 0;">MCP server 在云端 Lambda 运行，用户无需本地装 <code>uv</code>/<code>uvx</code>、Python 或 awslabs server，也不用维护本机 AWS 凭证和到数据库的直连。</p></div>
+          <div class="card"><h4>安全 + 可审计</h4><p style="color:var(--muted);margin:4px 0 0;">统一经 Cognito OAuth 令牌和 Gateway JWT 校验，凭证集中在 Secrets Manager 与 IAM，不下发终端；每个 Lambda 最小权限，调用经 CloudTrail/CloudWatch 留痕。</p></div>
+          <div class="card"><h4>后台无感迭代</h4><p style="color:var(--muted);margin:4px 0 0;">新增数据源只在同一 Gateway 加目标、更新 Lambda，客户端不改配置，Sync 即可见到新工具。天然支持多客户端、多团队。</p></div>
+        </div>
+
+        <h3>链路</h3>
+        <div class="flow">
+          <span class="n q">Amazon Quick</span><span class="ar">→</span>
+          <span class="n">Cognito 取令牌</span><span class="ar">→</span>
+          <span class="n">AgentCore Gateway（JWT 校验）</span><span class="ar">→</span>
+          <span class="n">Lambda + awslabs MCP</span><span class="ar">→</span>
+          <span class="n d">Redshift / RDS / Bedrock KB</span>
+        </div>
+
+        <div class="prereq">
+          <div class="box pre">
+            <div class="bh">📋 前置条件</div>
+            <div class="bd">
+              <p style="margin:0 0 6px;">管理员已按<strong>模块 2 阶段 4</strong> 搭好 Gateway 与 Cognito（<code>tools/list</code> 返回 11 个工具）。为了完成本 module，需要您准备以下由管理员交付的 4 个值，用于下面在 Quick 里创建云端 MCP 连接器（<strong>业务用户无需开终端</strong>）：</p>
+              <ul>
+                <li><strong>Gateway URL</strong>（以 <code>/mcp</code> 结尾），用于连接器的 MCP server URL 字段</li>
+                <li><strong>Client ID</strong>，用于 Authenticate 步骤</li>
+                <li><strong>Token URL</strong>，用于 Authenticate 步骤</li>
+                <li><strong>Client secret</strong>，用于 Authenticate 步骤；相当于密码，请谨慎保存，勿与第三方分享</li>
+              </ul>
+              <p class="none">并已登录 Quick（Enterprise 订阅、具备创建连接器权限）。</p>
+            </div>
+          </div>
+          <div class="box out">
+            <div class="bh">🎯 目标输出</div>
+            <div class="bd">
+              <p style="margin:0 0 6px;">在连接器创建并发布成功后，您预期看到：</p>
+              <ul>
+                <li>Quick 里一个云端 MCP 连接器（服务间 OAuth），Desktop 显示状态 <strong>Connected and ready to use with your agents</strong>（格式类似步骤 5 的截图）</li>
+                <li>11 个工具按 <strong>Write(3) / Read(8)</strong> 分好权限并发布</li>
+                <li>在 Desktop 用 Agent 查询 Redshift / RDS / 知识库，<strong>令牌自动续期</strong>，无需手动更新</li>
+              </ul>
+              <p class="none">Client secret 是整个 Gateway 的钥匙，请谨慎保存，勿与第三方分享；怀疑泄露即在 Cognito 轮换。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="step" data-title="准备交付值与连接器字段">
+        <div class="pagehead">
+          <span class="tag">模块 4 · 步骤 2</span>
+          <h2>准备管理员交付的值与连接器字段</h2>
+        </div>
+        <p>下面这些值由管理员在模块 2 搭建时产生并交付（管理员那边的取值方式见模块 2 / <code>AGENTS.md</code>）。业务用户把它们填进连接器即可，<strong>这一步不需要在本机跑任何命令</strong>。</p>
+        <div class="tablewrap">
+          <table>
+            <caption>管理员交付清单（示例占位，按实际替换）</caption>
+            <thead><tr><th>值</th><th>样子</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td>Gateway URL</td><td><code>https://&lt;gateway-id&gt;.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp</code></td><td>以 <code>/mcp</code> 结尾</td></tr>
+              <tr><td>Client ID</td><td><code>1a2b3c4d5e6f7g8h9i0j...</code></td><td>app client 编号，不算秘密</td></tr>
+              <tr><td>Token URL</td><td><code>https://quick-mcp-demo-xxxxxx.auth.us-east-1.amazoncognito.com/oauth2/token</code></td><td>Cognito 域名前缀 + 区域拼成</td></tr>
+              <tr><td>Client secret</td><td><code>••••••••••••••••</code></td><td>相当于密码；管理员通过剪贴板/密码管理器交付，勿明文传</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>连接器字段对照</h3>
+        <div class="tablewrap">
+          <table>
+            <caption>Quick 云端 MCP 连接器字段与来源</caption>
+            <thead><tr><th>字段</th><th>填什么</th><th>来源</th></tr></thead>
+            <tbody>
+              <tr><td>Name</td><td><code>AWS MCP Gateway</code></td><td>自定</td></tr>
+              <tr><td>Description</td><td>英文短句（只用字母、数字、空格和 <code>_ . , ! ? -</code>），如 <code>Query AWS data through an AgentCore Gateway.</code></td><td>自定</td></tr>
+              <tr><td>MCP server URL</td><td>Gateway 地址，以 <code>/mcp</code> 结尾</td><td>AgentCore Gateway</td></tr>
+              <tr><td>Authentication</td><td><strong>Service-to-service OAuth</strong></td><td>—</td></tr>
+              <tr><td>Client ID</td><td>app client 编号（不算秘密）</td><td>Cognito</td></tr>
+              <tr><td>Client secret</td><td>app client 密钥（相当于密码，勿贴聊天/文档）</td><td>Secrets Manager</td></tr>
+              <tr><td>Token URL</td><td><code>https://&lt;域名前缀&gt;.auth.&lt;区域&gt;.amazoncognito.com/oauth2/token</code></td><td>Cognito</td></tr>
+              <tr><td>VPC connection</td><td><strong>Public network</strong>（资源服务器与认证服务器都是公网端点）</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="step" data-title="创建连接器（Connect）">
+        <div class="pagehead">
+          <span class="tag">模块 4 · 步骤 3</span>
+          <h2>在 Quick 里创建连接器</h2>
+        </div>
+        <figure class="shot">
+          <img src="images/1cloudconnector.png" alt="Quick 的 Connectors 页，Create for your team 标签下的 Model Context Protocol 卡片" loading="lazy">
+          <figcaption><strong>1 入口。</strong>Connectors 页切到 Create for your team，选 Model Context Protocol 卡片。</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/2createmcp.png" alt="创建 MCP 连接器的起始步骤" loading="lazy">
+          <figcaption><strong>2 新建。</strong>进入 MCP 连接器创建向导（Connect、Authenticate、Manage Write/Read Permissions、Publish 五步）。账号里已有同类连接器时会提示，确认新建选 No, create new。</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/3connect.png" alt="Connect 步骤：填写 Name、Description、MCP server endpoint，Connection type 与 Auth connection type 都选 Public network" loading="lazy">
+          <figcaption><strong>3 Connect。</strong>填 Name、Description 和 MCP server endpoint（Gateway 地址，以 <code>/mcp</code> 结尾）。Connection type 与 Auth connection type 都选 Public network。下一步 Authenticate 选服务间 OAuth，填 Client ID、Client secret、Token URL。</figcaption>
+        </figure>
+      </section>
+
+      <!-- STEP 4 -->
+      <section class="step" data-title="权限与发布">
+        <div class="pagehead">
+          <span class="tag">模块 4 · 步骤 4</span>
+          <h2>工具权限与发布</h2>
+        </div>
+        <figure class="shot">
+          <img src="images/4write.png" alt="Manage Write Permissions 步骤：列出写操作工具，默认 Let users choose，另一个选项是 Always ask" loading="lazy">
+          <figcaption><strong>4 写权限。</strong>Quick 把 3 个工具归为 Write：知识库 <code>QueryKnowledgeBases</code>、PostgreSQL <code>run_query</code>、Redshift <code>execute_query</code>。能执行 SQL 的工具，企业环境建议选 <strong>Always ask</strong>（每次运行前批准）。</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/5read.png" alt="Manage Read Permissions 步骤：读操作工具，默认 Let users choose" loading="lazy">
+          <figcaption><strong>5 读权限。</strong>其余 8 个工具归为 Read。3 个写加 8 个读，正好是 Gateway 上的 11 个工具。</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/6publish.png" alt="Publish 步骤：默认只有自己可用，可打开 Everyone in your organization" loading="lazy">
+          <figcaption><strong>6 发布。</strong>默认只有创建者可用，可打开 Everyone in your organization 共享全组织。页面注明：服务间认证的连接<strong>不能在 Chat 或 Flows 里使用</strong>，在 Desktop 里通过 Agent 使用。</figcaption>
+        </figure>
+      </section>
+
+      <!-- STEP 5 -->
+      <section class="step" data-title="Desktop 里使用">
+        <div class="pagehead">
+          <span class="tag">模块 4 · 步骤 5</span>
+          <h2>在 Desktop 里使用</h2>
+        </div>
+        <figure class="shot">
+          <img src="images/7desktopsync.png" alt="Quick Desktop 的连接器详情：状态为 Connected and ready to use with your agents，并列出每个工具的 Action permissions" loading="lazy">
+          <figcaption><strong>7 Desktop 使用。</strong>登录同一账号，Customize → Connectors 里出现该连接器（By me · Cloud），状态 Connected and ready to use with your agents。令牌由 Quick 自动换，无需手动更新。右侧 Action permissions 可给每个工具选 Ask each time / Always allow / Always deny。</figcaption>
+        </figure>
+
+        <div class="admon a-warn">
+          <p class="h">⚠️ 实践要点</p>
+          <ul style="margin:6px 0 0;">
+            <li>Quick 把工具列表当静态的。Gateway 新增目标后，要在连接器里重新 <strong>Sync</strong>，新工具才出现。</li>
+            <li>Write/Read 分类按工具名判断，不代表数据库真能写；真正写权限由数据库用户决定。调用前 Quick 会弹确认。</li>
+            <li>Client secret 是整个 Gateway 的钥匙，可调用所有目标。不要贴到聊天或文档；怀疑泄露就在 Cognito 轮换。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- STEP 6 -->
+      <section class="step" data-title="验收与完成">
+        <div class="pagehead">
+          <span class="tag">模块 4 · 步骤 6</span>
+          <h2>验收（在 Quick 里提问）</h2>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>问题</th><th>期望</th></tr></thead>
+            <tbody>
+              <tr><td>Redshift 里 demo_sales 有多少行、总收入多少</td><td>2600 行，1197156.76</td></tr>
+              <tr><td>按产品类别统计收入，并显示 SQL</td><td>Subscription 620058.00、Devices 374181.22、Smart Home 202917.54</td></tr>
+              <tr><td>数据库（RDS）里有哪些表</td><td><code>demo_products</code>、<code>demo_sales</code>，数字与 Redshift 一致</td></tr>
+              <tr><td>知识库里查：退货期限多少天，给出处</td><td>30 天，出处 <code>return-policy.md</code></td></tr>
+              <tr><td>让 Agent 删除 demo_sales 的数据</td><td>被拒绝（Redshift 默认只读，RDS 用只读角色）</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="admon a-ok">
+          <p class="h">🎉 Workshop 完成</p>
+          <p>至此，业务用户可在 Quick 里用自然语言查询 Redshift、RDS 和 Bedrock 知识库，所有访问都经过统一鉴权与审计，破坏性操作被数据库权限兜底拒绝。记得按<strong>模块 2 的清理步骤</strong>回收计费资源，并在 Quick 里手动删除连接器。</p>
+        </div>
+      </section>
+
+      <div class="pager">
+        <div class="pager-link" id="nav-back"></div>
+        <div class="pager-link next" id="nav-next"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/wizard.js"></script>
+<script src="assets/copy.js"></script>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>SA 一键搭建 DB / 数仓 / RAG / MCP Server · Workshop</title>
+<link rel="stylesheet" href="assets/workshop.css">
+</head>
+<body data-module="模块 2"
+      data-prev-file="01-introduction.html" data-prev-name="模块 1 · 方案介绍"
+      data-next-file="03-quick-local-mcp.html" data-next-name="模块 3 · Quick 配置 Local MCP">
+<div class="shell">
+
+  <aside>
+    <div class="brand">
+      <div class="kicker">AWS Workshop</div>
+      <h1>用自然语言在 Amazon Quick 查询 AWS 数据<br><span style="font-weight:500;color:#aeb8c4;font-size:.9rem;">MCP · AgentCore · Redshift / RDS / Bedrock KB</span></h1>
+    </div>
+    <nav class="modules" aria-label="模块导航">
+      <ol>
+        <li><a class="mod" href="01-introduction.html">方案介绍与步骤概述</a></li>
+        <li class="active">
+          <a class="mod" href="02-sa-build.html">SA 一键搭建 DB / 数仓 / RAG / MCP Server</a>
+          <ul class="substeps" id="substeps"></ul>
+        </li>
+        <li><a class="mod" href="03-quick-local-mcp.html">Quick 快速配置 Local MCP</a></li>
+        <li><a class="mod" href="04-enterprise-cloud-mcp.html">企业最佳实践：Cloud MCP</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="topbar">Workshop &rsaquo; <b>模块 2 · SA 一键搭建</b> &nbsp;·&nbsp; <span id="crumb-step"></span></div>
+    <div class="content">
+      <div class="progress"><i id="progress-bar"></i></div>
+
+      <!-- STEP 1 -->
+      <section class="step" data-title="概述 · 前置与输出">
+        <div class="pagehead">
+          <span class="tag">模块 2 · 步骤 1 · SA / 管理员</span>
+          <h2>SA 一键搭建 DB / 数仓 / RAG / MCP Server</h2>
+          <p>用 AWS CLI 脚本把三类数据源和企业入口搭好：Redshift 数仓、RDS PostgreSQL 数据库、Bedrock 知识库（RAG），以及 Cognito + AgentCore Gateway + Lambda 组成的 MCP Server。</p>
+        </div>
+
+        <div class="prereq">
+          <div class="box pre">
+            <div class="bh">📋 前置条件</div>
+            <div class="bd">
+              <p style="margin:0 0 6px;">为了完成本 module，需要您准备以下信息，用于下面的四段搭建流水线：</p>
+              <ul>
+                <li>一个具备建权的 <strong>AWS <code>AWS_PROFILE</code></strong>（能创建 IAM、Lambda、Cognito、Secrets Manager、S3 / S3 Vectors、Bedrock KB、AgentCore Gateway、Redshift Serverless、RDS），用于全部创建命令</li>
+                <li><strong>区域</strong>（默认 <code>us-east-1</code>）与<strong>资源前缀</strong> <code>NAME_PREFIX</code>（默认 <code>quick-mcp-demo</code>），用于资源命名与打标签</li>
+                <li>本机工具 <strong><code>aws</code> CLI、<code>uv</code>、Python 3.10+</strong>，用于运行脚本</li>
+                <li>仓库里的 <strong><code>AGENTS.md</code></strong>，用于交给 Kiro 按序执行（下一步说明怎么给）</li>
+              </ul>
+            </div>
+          </div>
+          <div class="box out">
+            <div class="bh">🎯 目标输出</div>
+            <div class="bd">
+              <p style="margin:0 0 8px;">四个阶段 Gate 全部通过后，您将得到以下值，用于<strong>模块 3、4 填写 Quick 连接器字段</strong>。注意“怎么拿到”——脚本会 echo 一部分，另一部分存在 Secrets Manager / 需要单独查一条命令（示例格式仅供对照）：</p>
+              <div class="tablewrap">
+                <table>
+                  <thead><tr><th>用于</th><th>字段</th><th>怎么拿到</th><th>示例</th></tr></thead>
+                  <tbody>
+                    <tr><td rowspan="6">模块 3<br>（Local）</td><td>区域</td><td>您自己设的 <code>AWS_REGION</code></td><td><code>us-east-1</code></td></tr>
+                    <tr><td>库名</td><td><code>create_rds.sh</code> echo <code>RDS_DB</code></td><td><code>demo</code></td></tr>
+                    <tr><td>RDS 端点</td><td>脚本未直接打印；查：<code>aws rds describe-db-instances --db-instance-identifier &lt;RDS_ID&gt; --query 'DBInstances[0].Endpoint.Address' --output text</code></td><td><code>quick-mcp-demo-pg.cabc123.us-east-1.rds.amazonaws.com</code></td></tr>
+                    <tr><td>RDS 只读密钥 ARN</td><td>由 <code>seed_rds_private.py</code> 创建密钥 <code>&lt;NAME&gt;/pg-readonly</code>；查 ARN：<code>aws secretsmanager describe-secret --secret-id &lt;NAME&gt;/pg-readonly --query ARN --output text</code></td><td><code>arn:aws:secretsmanager:us-east-1:123456789012:secret:quick-mcp-demo/pg-readonly-a1B2c3</code></td></tr>
+                    <tr><td>知识库 ID</td><td><code>create_kb.py</code> 写入 <code>bootstrap/state.env</code> 的 <code>KB_ID</code></td><td><code>ABCDE12345</code></td></tr>
+                    <tr><td>知识库所在区域</td><td>同上文件里的 <code>KB_REGION</code></td><td><code>us-east-1</code></td></tr>
+                    <tr><td rowspan="4">模块 4<br>（Cloud）</td><td>Gateway URL</td><td><code>setup.sh</code> 结尾 echo（或 <code>get-gateway ... gatewayUrl</code>）</td><td><code>https://quick-mcp-demo-gw-abc123.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp</code></td></tr>
+                    <tr><td>Client ID</td><td><strong>不打印</strong>，存在密钥 <code>&lt;NAME&gt;/cognito-client</code>（JSON 字段 <code>client_id</code>）</td><td><code>1a2b3c4d5e6f7g8h9i0j1k2l3m</code></td></tr>
+                    <tr><td>Token URL</td><td><strong>不打印</strong>，同一密钥的 <code>token_url</code> 字段</td><td><code>https://quick-mcp-demo-xxxxxx.auth.us-east-1.amazoncognito.com/oauth2/token</code></td></tr>
+                    <tr><td>Client secret</td><td><strong>从不打印</strong>，仅存同一密钥的 <code>client_secret</code> 字段；取值只进剪贴板，勿明文留存</td><td><code>••••••••••••••••••••</code></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="none">Cognito 的三项都在 Secrets Manager 密钥 <code>&lt;NAME&gt;/cognito-client</code> 里（取值方式见 <code>get_token.sh</code>）。其中 RDS 只读密钥 ARN 与 Client secret 相当于密码，请谨慎保存，勿与第三方分享。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="step" data-title="方式 A · 交给 Kiro">
+        <div class="pagehead">
+          <span class="tag">模块 2 · 步骤 2</span>
+          <h2>方式 A（推荐）：把 <code>AGENTS.md</code> 交给 Kiro 一键生成</h2>
+          <p>同样的四段流水线有两种做法，二选一即可——产出完全一样。<strong>方式 A（本步骤）</strong>：把 <code>AGENTS.md</code> 交给 Kiro，它逐阶段运行脚本、在每个 Gate 暂停核对，最后直接 echo 出所有字段值。<strong>方式 B（步骤 3–7）</strong>：自己在终端按阶段手动执行。想省事选 A，想完全掌控每一步选 B。</p>
+        </div>
+
+        <p><code>AGENTS.md</code> 是写给 AI Agent 的操作手册，Kiro 会在会话开始时自动加载工作区根目录的它作为规则。仓库地址：<a href="https://github.com/zanbei/quick-mcp-aws-demo/tree/main" target="_blank" rel="noopener">github.com/zanbei/quick-mcp-aws-demo</a>。</p>
+        <ol class="steps">
+          <li><h4>克隆并打开</h4><p><code>git clone https://github.com/zanbei/quick-mcp-aws-demo.git</code>，用 Kiro 打开它（<code>AGENTS.md</code> 在仓库根目录），确认它已作为 workspace 规则生效。</p></li>
+          <li><h4>显式加入上下文并下达指令</h4><p>在 Kiro 聊天里用 <code>#AGENTS.md</code> 把该文件加入上下文，然后下达指令，例如下面这句。</p></li>
+          <li><h4>Kiro 逐阶段执行并回报产出</h4><p>Kiro 会逐阶段运行脚本，在每个 Gate（验收命令）暂停核对产出；遇到创建、删除类操作会先征得您同意。</p></li>
+        </ol>
+
+        <div class="admon a-ok">
+          <p class="h">🎯 让 Kiro 执行完直接 echo 出全部结果</p>
+          <p>在最后追加这句，Kiro 会把模块 3、4 要填的值<strong>全部一次打印出来</strong>（包括需要额外查的 RDS 端点、密钥 ARN，以及从密钥里取出的 Cognito client_id / token_url）：</p>
+          <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>执行完成后，请直接 echo 出下面所有值（一行一个，带标签）：
+  RS_WORKGROUP、RS_DB、WG_ID
+  RDS_DB、RDS 端点（aws rds describe-db-instances --db-instance-identifier $RDS_ID \
+    --query 'DBInstances[0].Endpoint.Address' --output text）
+  RDS 只读密钥 ARN（aws secretsmanager describe-secret --secret-id $NAME_PREFIX/pg-readonly \
+    --query ARN --output text）
+  KB_ID、KB_REGION（读 bootstrap/state.env）
+  Gateway URL（aws bedrock-agentcore-control get-gateway --gateway-identifier $GW_ID \
+    --query gatewayUrl --output text）
+  Cognito client_id、token_url（从密钥 $NAME_PREFIX/cognito-client 的 JSON 取 client_id、token_url 字段）
+只有 client_secret 不要打印，改成放进剪贴板（... | pbcopy），我会直接去 Quick 粘贴。</code></pre></div>
+          <p style="margin:8px 0 0;">这样一条指令就拿齐了模块 3、4 的<strong>全部字段</strong>。唯一不 echo 的是 <strong>client_secret</strong>——它相当于密码，只进剪贴板；以及模块 3 的<strong>只读 AWS profile 名</strong>，那是业务用户在自己电脑上建的，不由本模块产出。</p>
+        </div>
+        <div class="admon a-info">
+          <p class="h">💬 示例指令（粘到 Kiro 聊天）</p>
+          <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>请按 #AGENTS.md 从阶段 1 开始执行，profile 用 default，区域 us-east-1，
+NAME_PREFIX=quick-mcp-demo；每个 Gate 停下来，把实际输出发给我确认后再继续。</code></pre></div>
+        </div>
+
+        <h3>先决条件（本机）</h3>
+        <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>aws --version        # v1 或 v2
+uv --version         # 没有就 brew install uv
+python3 --version    # 3.10+
+aws sts get-caller-identity --profile "$AWS_PROFILE"   # 确认账号
+
+# 每个新终端先导出（NAME_PREFIX 全程保持一致）
+export AWS_PROFILE=default AWS_REGION=us-east-1 AWS_DEFAULT_REGION=us-east-1 \
+       AWS_PAGER="" NAME_PREFIX=quick-mcp-demo</code></pre></div>
+
+        <h3>四段流水线总览</h3>
+        <div class="flow">
+          <span class="n d">① Redshift 数仓</span>
+          <span class="n d">② RDS PostgreSQL</span>
+          <span class="n d">③ Bedrock 知识库</span><span class="ar">→</span>
+          <span class="n q">④ AgentCore 企业入口</span>
+        </div>
+        <div class="admon a-info">
+          <p class="h">ℹ️ 接下来</p>
+          <p>选了<strong>方式 A</strong>：Kiro 执行完并 echo 出产出后，直接跳到<strong>模块 3</strong>（用产出的字段配置 Quick）。选了<strong>方式 B</strong>：继续看步骤 3–7，按阶段手动执行。</p>
+        </div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="step" data-title="方式 B · 阶段 1 Redshift">
+        <div class="pagehead">
+          <span class="tag">模块 2 · 步骤 3 · 方式 B · 阶段 1</span>
+          <h2>方式 B — 阶段 1：Redshift（数据仓库）</h2>
+          <p>步骤 3–7 是<strong>方式 B（手动逐阶段）</strong>的具体命令与验收（Gate）。选了方式 A（交给 Kiro）的话，这些由 Kiro 代跑，这几页仅供查阅与核对。</p>
+        </div>
+        <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>bootstrap/create_redshift.sh create          # 约 3–5 分钟，输出 RS_WORKGROUP / RS_DB / WG_ID
+export RS_WORKGROUP=${NAME_PREFIX}-wg RS_DB=dev WG_ID=&lt;上一步输出&gt;
+scripts/seed_redshift_demo.sh seed           # 建 demo_products、demo_sales，写入 2600 行</code></pre></div>
+        <h4>产出</h4>
+        <ul>
+          <li>一个 Redshift Serverless 工作组，输出 <code>RS_WORKGROUP</code>、<code>RS_DB</code>、<code>WG_ID</code>。</li>
+          <li>两张表 <code>public.demo_products</code>、<code>public.demo_sales</code>，后者 2600 行。</li>
+        </ul>
+        <div class="admon a-ok"><p class="h">✅ Gate</p>
+        <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>ID=$(aws redshift-data execute-statement --workgroup-name "$RS_WORKGROUP" --database "$RS_DB" \
+  --sql "SELECT COUNT(*), SUM(revenue) FROM public.demo_sales" --query Id --output text)
+sleep 8; aws redshift-data get-statement-result --id "$ID" --query Records --output json</code></pre></div>
+        <p>期望 <code>2600</code> 和 <code>1197156.76</code>。</p></div>
+      </section>
+
+      <!-- STEP 4 -->
+      <section class="step" data-title="方式 B · 阶段 2 RDS">
+        <div class="pagehead">
+          <span class="tag">模块 2 · 步骤 4 · 阶段 2</span>
+          <h2>RDS PostgreSQL（关系型数据库）</h2>
+        </div>
+        <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>bootstrap/create_rds.sh create               # 约 5–10 分钟；加密、密码托管、永不对外
+export RDS_ID=${NAME_PREFIX}-pg RDS_INSTANCE=${NAME_PREFIX}-pg RDS_DB=demo
+uv run --no-project --isolated --with boto3 python scripts/seed_rds_private.py seed</code></pre></div>
+        <h4>产出</h4>
+        <ul>
+          <li>一个<strong>非公网可访问</strong>的加密 RDS PostgreSQL 实例，密码托管在 Secrets Manager。</li>
+          <li>同样的两张表与 2600 行数据（在 VPC 内由临时 Lambda 注入，不开任何入站端口）。</li>
+          <li>只读角色 <code>mcp_readonly</code> 和密钥 <code>&lt;NAME_PREFIX&gt;/pg-readonly</code>，供后续 Lambda 连库使用。</li>
+          <li>安全组 <code>&lt;NAME_PREFIX&gt;-pg-lambda-sg</code> 及其对 RDS 5432 的放行规则。</li>
+        </ul>
+        <div class="admon a-ok"><p class="h">✅ Gate</p>
+        <p>脚本输出 <code>demo_sales rows / total revenue: (2600, Decimal('1197156.76'))</code>，并按类别列出 Subscription 620058.00、Devices 374181.22、Smart Home 202917.54。确认未对外开放：</p>
+        <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>aws rds describe-db-instances --db-instance-identifier "$RDS_ID" \
+  --query 'DBInstances[0].PubliclyAccessible'    # 期望 false</code></pre></div></div>
+      </section>
+
+      <!-- STEP 5 -->
+      <section class="step" data-title="方式 B · 阶段 3 知识库">
+        <div class="pagehead">
+          <span class="tag">模块 2 · 步骤 5 · 阶段 3</span>
+          <h2>Bedrock 知识库（RAG）</h2>
+        </div>
+        <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>uv run --no-project --isolated --with boto3 python bootstrap/create_kb.py create   # 约 2–3 分钟
+uv run --no-project --isolated --with boto3 python bootstrap/create_kb.py verify
+set -a; . bootstrap/state.env; set +a         # 得到 KB_ID、KB_REGION</code></pre></div>
+        <h4>产出</h4>
+        <ul>
+          <li>文档桶 + 上传的 4 篇示例文档；S3 Vectors 桶与索引（Titan Embeddings v2，1024 维，无常驻费用）。</li>
+          <li>Bedrock 知识库与数据源，摄取状态 <code>COMPLETE</code>，输出 <code>KB_ID</code>、<code>KB_REGION</code>。</li>
+        </ul>
+        <div class="admon a-ok"><p class="h">✅ Gate</p>
+        <p><code>verify</code> 两行都是 <code>OK</code>：退货问题命中 <code>return-policy.md</code>，Kindle 无障碍问题命中 <code>product-faq.md</code>。</p></div>
+      </section>
+
+      <!-- STEP 6 -->
+      <section class="step" data-title="方式 B · 阶段 4 企业入口">
+        <div class="pagehead">
+          <span class="tag">模块 2 · 步骤 6 · 阶段 4</span>
+          <h2>企业入口（Cognito + Gateway + Lambda = MCP Server）</h2>
+        </div>
+        <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>cd agentcore-verify
+./setup.sh                      # Cognito、Gateway、Redshift Lambda 目标（需 RS_WORKGROUP/RS_DB/WG_ID）
+uv run --no-project --isolated --with 'mcp&lt;2' --with boto3 python test_gateway.py
+
+./setup_pg.sh                   # 需 RDS_ID；VPC/子网/安全组从实例读取
+uv run --no-project --isolated --with 'mcp&lt;2' --with boto3 python test_gateway_pg.py
+
+./setup_kb.sh                   # 需 KB_ID、KB_REGION
+uv run --no-project --isolated --with 'mcp&lt;2' --with boto3 python test_gateway_kb.py
+
+./get_token.sh --check          # 期望 HTTP 200，tools: 11</code></pre></div>
+        <h4>产出</h4>
+        <ul>
+          <li>一个 Cognito user pool + app client（<code>client_credentials</code>，自定义 scope），凭证存 Secrets Manager。</li>
+          <li>一个 AgentCore Gateway，挂 3 个 Lambda 目标：Redshift MCP（6 工具）、PostgreSQL MCP（3 工具）、知识库 MCP（2 工具）。</li>
+          <li>Gateway URL（以 <code>/mcp</code> 结尾），Quick 云端连接器用它作统一入口。</li>
+          <li>最小权限：Redshift 默认只读，RDS 用只读角色，知识库 Lambda 只有对该 KB 的 <code>bedrock:Retrieve</code>。</li>
+        </ul>
+        <div class="admon a-ok"><p class="h">✅ Gate</p>
+        <p><code>get_token.sh --check</code> 返回 <strong>200</strong> 且 <strong>11 个工具</strong>（Redshift 6、PostgreSQL 3、知识库 2）；未带令牌的请求返回 <strong>401</strong>。</p></div>
+        <div class="admon a-warn">
+          <p class="h">⚠️ 常见坑（摘自 AGENTS.md）</p>
+          <ul style="margin:6px 0 0;">
+            <li>awslabs server 需 mcp 2.x，Lambda 适配器需 mcp 1.x，依赖拆成两套（<code>server_pkgs</code>）。</li>
+            <li>Gateway 的工具 schema 不接受 <code>enum</code>；Lambda 包超 50 MB 必须经 S3 部署。</li>
+            <li>postgres server 启动参数不要加 <code>--db_type</code>，对 RDS 单实例会缺集群 ARN 崩溃。</li>
+            <li>macOS 自带 bash 3.2，没有关联数组；脚本改完用 <code>/bin/bash -n</code> 检查。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- STEP 7 -->
+      <section class="step" data-title="清理（会计费）">
+        <div class="pagehead">
+          <span class="tag">模块 2 · 步骤 7</span>
+          <h2>清理（会计费，按反序执行）</h2>
+          <p>workshop 全部体验完后执行；每步先确认再运行。</p>
+        </div>
+        <div class="admon a-risk">
+          <p class="h">🗑️ 删除即不可逆，先确认再执行</p>
+          <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>cd agentcore-verify
+./cleanup_kb.sh &amp;&amp; ./cleanup_pg.sh &amp;&amp; ./cleanup.sh
+cd ..
+uv run --no-project --isolated --with boto3 python bootstrap/create_kb.py cleanup
+bootstrap/create_rds.sh delete          # 无最终快照，数据会丢
+bootstrap/create_redshift.sh delete     # 无最终快照，数据会丢</code></pre></div>
+          <p>最后在 Quick 里手动删除连接器。<code>cleanup_pg.sh</code> 的接口终端节点与安全组释放有延迟，脚本会重试。</p>
+        </div>
+        <div class="admon a-ok">
+          <p class="h">✅ 本模块完成</p>
+          <p>数据源与企业入口已就绪，并记录好交付给模块 3、4 的字段值。点下一步，业务用户即可开始在 Quick 里配置连接器。</p>
+        </div>
+      </section>
+
+      <div class="pager">
+        <div class="pager-link" id="nav-back"></div>
+        <div class="pager-link next" id="nav-next"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/wizard.js"></script>
+<script src="assets/copy.js"></script>
+</body>
+</html>

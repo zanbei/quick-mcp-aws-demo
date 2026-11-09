@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Quick 快速配置 Local MCP · Workshop</title>
+<link rel="stylesheet" href="assets/workshop.css">
+</head>
+<body data-module="模块 3"
+      data-prev-file="02-sa-build.html" data-prev-name="模块 2 · SA 一键搭建"
+      data-next-file="04-enterprise-cloud-mcp.html" data-next-name="模块 4 · 企业最佳实践 Cloud MCP">
+<div class="shell">
+
+  <aside>
+    <div class="brand">
+      <div class="kicker">AWS Workshop</div>
+      <h1>用自然语言在 Amazon Quick 查询 AWS 数据<br><span style="font-weight:500;color:#aeb8c4;font-size:.9rem;">MCP · AgentCore · Redshift / RDS / Bedrock KB</span></h1>
+    </div>
+    <nav class="modules" aria-label="模块导航">
+      <ol>
+        <li><a class="mod" href="01-introduction.html">方案介绍与步骤概述</a></li>
+        <li><a class="mod" href="02-sa-build.html">SA 一键搭建 DB / 数仓 / RAG / MCP Server</a></li>
+        <li class="active">
+          <a class="mod" href="03-quick-local-mcp.html">Quick 快速配置 Local MCP</a>
+          <ul class="substeps" id="substeps"></ul>
+        </li>
+        <li><a class="mod" href="04-enterprise-cloud-mcp.html">企业最佳实践：Cloud MCP</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="topbar">Workshop &rsaquo; <b>模块 3 · Quick 快速配置 Local MCP</b> &nbsp;·&nbsp; <span id="crumb-step"></span></div>
+    <div class="content">
+      <div class="progress"><i id="progress-bar"></i></div>
+
+      <!-- STEP 1 -->
+      <section class="step" data-title="概述 · 前置与输出">
+        <div class="pagehead">
+          <span class="tag">模块 3 · 步骤 1 · 业务用户</span>
+          <h2>Quick 快速配置 Local MCP</h2>
+          <p>在 Quick Desktop 用 <strong>Local 连接器</strong>直接在本机运行 awslabs 的 MCP，几分钟配好。适合个人、小团队和快速验证。从提问到出图，不写一行 SQL。</p>
+        </div>
+
+        <div class="prereq">
+          <div class="box pre">
+            <div class="bh">📋 前置条件</div>
+            <div class="bd">
+              <p style="margin:0 0 6px;">为了完成本 module，需要您准备以下信息，用于下面创建 3 个 Local 连接器并对话查询：</p>
+              <ul>
+                <li>已安装并登录 <strong>Quick Desktop</strong> 桌面端，用于创建连接器与提问</li>
+                <li>本机已装 <strong><code>uv</code> / <code>uvx</code></strong>（记下 <code>uvx</code> 绝对路径）与 <strong>AWS CLI</strong>，用于本机运行 MCP</li>
+                <li>一个 <strong>AWS <code>profile</code></strong>（默认用 <code>default</code>；生产环境建议单独建只读 profile，勿用管理员），用于 MCP 访问 AWS</li>
+                <li>管理员在模块 2 交付的数据源值（区域、RDS 只读密钥 ARN、RDS 端点、库名、知识库 ID 与区域），用于填写下面的连接器字段</li>
+                <li>笔记本网络能直达目标数据库（<strong>RDS 5432</strong>），用于 Local 直连</li>
+              </ul>
+            </div>
+          </div>
+          <div class="box out">
+            <div class="bh">🎯 目标输出</div>
+            <div class="bd">
+              <p style="margin:0 0 6px;">在连接器创建并测试通过后，您预期看到：</p>
+              <ul>
+                <li>Quick Desktop 里 3 个 Local 连接器（Redshift、RDS PostgreSQL、Bedrock KB）<strong>Test connection 通过</strong>、状态正常</li>
+                <li>用自然语言查到 Redshift 月度营收并画出<strong>折线图</strong>（格式类似步骤 4、5 的截图）</li>
+                <li>Agent 能列出 RDS 的 <code>demo_products</code>、<code>demo_sales</code> 表，并在知识库里检索给出处</li>
+              </ul>
+              <p class="none">配置中用到的只读密钥 ARN、profile 等信息请谨慎保存，勿与第三方分享。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="step" data-title="准备依赖与交付值">
+        <div class="pagehead">
+          <span class="tag">模块 3 · 步骤 2</span>
+          <h2>准备本机依赖与管理员交付的值</h2>
+        </div>
+        <p>Local 方式需要本机准备下列依赖。可以交给 Kiro 逐项检查，缺什么装什么。下表给出 macOS 与 Windows 两套安装命令（Windows 的 <code>winget</code> 随 Win10/11 自带；也可用 PowerShell 一键脚本）。</p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>依赖</th><th>检查命令</th><th>安装（macOS）</th><th>安装（Windows）</th><th>必需</th></tr></thead>
+            <tbody>
+              <tr><td>uv（含 <code>uvx</code>）</td><td><code>uvx --version</code></td><td><code>brew install uv</code></td><td><code>winget install astral-sh.uv</code>（或 <code>powershell -c "irm https://astral.sh/uv/install.ps1 | iex"</code>）</td><td>是</td></tr>
+              <tr><td>uvx 的绝对路径</td><td>macOS：<code>which uvx</code><br>Windows：<code>where uvx</code></td><td>Homebrew 一般为 <code>/opt/homebrew/bin/uvx</code></td><td>一般为 <code>%USERPROFILE%\.local\bin\uvx.exe</code></td><td>是</td></tr>
+              <tr><td>Python 3.10+</td><td><code>uv python list --only-installed</code></td><td>uv 按需自动下载</td><td>uv 按需自动下载</td><td>自动</td></tr>
+              <tr><td>AWS CLI</td><td><code>aws --version</code></td><td><code>brew install awscli</code></td><td><code>winget install Amazon.AWSCLI</code></td><td>推荐</td></tr>
+              <tr><td>AWS profile</td><td><code>aws sts get-caller-identity --profile default</code></td><td colspan="2"><code>aws configure --profile default</code>（两平台相同）</td><td>是</td></tr>
+              <tr><td>Quick Desktop 桌面端</td><td>—</td><td colspan="2">手动安装（两平台均有客户端）</td><td>是</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>管理员交付的值（直接替换下面字段里的占位符）</h3>
+        <p>下面这些值由管理员在模块 2 搭建时产生。业务用户拿到后，直接把它们填进后面三个连接器的字段里，<strong>无需在本机查询或跑命令</strong>。</p>
+        <div class="tablewrap">
+          <table>
+            <caption>管理员交付清单（示例占位，按实际替换）</caption>
+            <thead><tr><th>用在哪</th><th>值</th><th>样子</th></tr></thead>
+            <tbody>
+              <tr><td>Redshift / RDS 区域</td><td><code>AWS_REGION</code></td><td><code>us-east-1</code></td></tr>
+              <tr><td>AWS profile 名</td><td><code>AWS_PROFILE</code></td><td><code>default</code></td></tr>
+              <tr><td>RDS 只读密钥 ARN</td><td><code>--secret_arn</code></td><td><code>arn:aws:secretsmanager:us-east-1:123456789012:secret:quick-mcp-demo/pg-readonly-a1B2c3</code></td></tr>
+              <tr><td>RDS 端点</td><td>连接提示词里的 <code>db_endpoint</code></td><td><code>quick-mcp-demo-pg.cabc123.us-east-1.rds.amazonaws.com</code></td></tr>
+              <tr><td>RDS 库名</td><td>连接提示词里的 <code>database</code></td><td><code>demo</code></td></tr>
+              <tr><td>知识库所在区域</td><td>KB 连接器的 <code>AWS_REGION</code></td><td><code>us-west-2</code>（按实际）</td></tr>
+              <tr><td>知识库 ID</td><td>检索提示词里引用</td><td><code>ABCDE12345</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>AWS profile 需要的 IAM 权限</h3>
+        <p>MCP server 以本机 <code>AWS_PROFILE</code> 的权限访问 AWS（CLI/SDK 用的是同一套凭证）。给这个 profile 的最小权限按数据源列在下表——只给要连的那几个即可。用 <code>default</code> / 管理员 profile 能直接跑通，但<strong>生产环境请按下表收敛为只读</strong>。</p>
+        <div class="tablewrap">
+          <table>
+            <caption>Local MCP 所需的最小 IAM 权限（按数据源）</caption>
+            <thead><tr><th>数据源 / server</th><th>Action</th><th>Resource</th></tr></thead>
+            <tbody>
+              <tr>
+                <td rowspan="4"><strong>Redshift</strong><br><code>redshift-mcp-server</code></td>
+                <td><code>redshift:DescribeClusters</code>、<code>redshift-serverless:ListWorkgroups</code>（发现）</td><td><code>*</code></td>
+              </tr>
+              <tr><td><code>redshift-serverless:GetCredentials</code>（取临时凭证）</td><td>工作组 ARN</td></tr>
+              <tr><td><code>redshift-data:ExecuteStatement</code>、<code>BatchExecuteStatement</code>（跑 SQL）</td><td>工作组 ARN</td></tr>
+              <tr><td><code>redshift-data:DescribeStatement</code>、<code>GetStatementResult</code>（取结果）</td><td><code>*</code></td></tr>
+              <tr>
+                <td rowspan="2"><strong>RDS PostgreSQL</strong><br><code>postgres-mcp-server</code></td>
+                <td><code>secretsmanager:GetSecretValue</code>、<code>DescribeSecret</code>（读只读库口令）</td><td><code>&lt;NAME&gt;/pg-readonly-*</code> 密钥 ARN</td>
+              </tr>
+              <tr><td><code>rds:DescribeDBInstances</code>（查端点等元数据）</td><td><code>db:*</code> 或具体实例 ARN</td></tr>
+              <tr>
+                <td><strong>Bedrock 知识库</strong><br><code>bedrock-kb-retrieval-mcp-server</code></td>
+                <td><code>bedrock:Retrieve</code>（检索）</td><td>该知识库 ARN <code>knowledge-base/&lt;KB_ID&gt;</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="admon a-info" style="margin-top:12px;">
+          <p class="h">ℹ️ 说明</p>
+          <ul style="margin:6px 0 0;">
+            <li>这些正是模块 2 给对应 Lambda 角色授的权限，本地 profile 用同一组即可。</li>
+            <li>RDS Local 走 pgwire 直连、口令来自 <code>pg-readonly</code> 密钥，所以<strong>不需要</strong> <code>rds-db:connect</code>；只要能读密钥和查实例端点。真正的只读边界由数据库角色 <code>mcp_readonly</code> 把守。</li>
+            <li><code>bedrock:Retrieve</code> 够用；若还想让 Agent 列知识库（<code>ListKnowledgeBases</code>），再加 <code>bedrock:ListKnowledgeBases</code>（可选）。</li>
+            <li>还需能用 <code>sts:GetCallerIdentity</code> 自检身份（几乎所有 profile 默认可用）。</li>
+          </ul>
+        </div>
+
+        <h4>示例 IAM 策略（三类数据源合一，最小权限）</h4>
+        <p>把下面的 JSON 作为 inline policy 挂到 <code>AWS_PROFILE</code> 对应的 IAM 用户/角色上，替换占位符 <code>&lt;ACCT&gt;</code>（账号 ID）、<code>&lt;WG_ID&gt;</code>（Redshift 工作组 ID）、<code>&lt;KB_ID&gt;</code>（知识库 ID），区域按实际改。只连其中一两个数据源时，删掉用不到的 <code>Statement</code> 即可。</p>
+        <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SelfIdentity",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    },
+    {
+      "Sid": "RedshiftDiscovery",
+      "Effect": "Allow",
+      "Action": ["redshift:DescribeClusters", "redshift-serverless:ListWorkgroups"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "RedshiftServerlessCreds",
+      "Effect": "Allow",
+      "Action": "redshift-serverless:GetCredentials",
+      "Resource": "arn:aws:redshift-serverless:us-east-1:&lt;ACCT&gt;:workgroup/&lt;WG_ID&gt;"
+    },
+    {
+      "Sid": "RedshiftDataRun",
+      "Effect": "Allow",
+      "Action": ["redshift-data:ExecuteStatement", "redshift-data:BatchExecuteStatement"],
+      "Resource": "arn:aws:redshift-serverless:us-east-1:&lt;ACCT&gt;:workgroup/&lt;WG_ID&gt;"
+    },
+    {
+      "Sid": "RedshiftDataRead",
+      "Effect": "Allow",
+      "Action": ["redshift-data:DescribeStatement", "redshift-data:GetStatementResult"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "RdsReadOnlySecret",
+      "Effect": "Allow",
+      "Action": ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
+      "Resource": "arn:aws:secretsmanager:us-east-1:&lt;ACCT&gt;:secret:quick-mcp-demo/pg-readonly-*"
+    },
+    {
+      "Sid": "RdsDescribe",
+      "Effect": "Allow",
+      "Action": "rds:DescribeDBInstances",
+      "Resource": "arn:aws:rds:us-east-1:&lt;ACCT&gt;:db:*"
+    },
+    {
+      "Sid": "BedrockKbRetrieve",
+      "Effect": "Allow",
+      "Action": "bedrock:Retrieve",
+      "Resource": "arn:aws:bedrock:us-east-1:&lt;ACCT&gt;:knowledge-base/&lt;KB_ID&gt;"
+    }
+  ]
+}</code></pre></div>
+        <p style="color:var(--muted);"><a href="assets/mcp-readonly-policy.json" download>下载 mcp-readonly-policy.json</a>。知识库若在别的区域（如 <code>us-west-2</code>），把 <code>BedrockKbRetrieve</code> 的 ARN 区域改成对应区域。</p>
+
+        <div class="admon a-warn">
+          <p class="h">⚠️ 三个通用要点</p>
+          <ul style="margin:6px 0 0;">
+            <li><strong>Command 用绝对路径</strong>（macOS 如 <code>/opt/homebrew/bin/uvx</code>；Windows 如 <code>C:\Users\&lt;you&gt;\.local\bin\uvx.exe</code>）：图形界面应用不继承终端 PATH。</li>
+            <li><strong>Timeout 填 120</strong>：首次启动要下载依赖。</li>
+            <li>凭证来自环境变量 <code>AWS_PROFILE</code>（默认 <code>default</code>）。生产环境建议给 MCP 单独建<strong>只读 profile</strong>，不要用管理员 profile。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="step" data-title="配置三个 MCP server">
+        <div class="pagehead">
+          <span class="tag">模块 3 · 步骤 3</span>
+          <h2>配置三个 MCP server</h2>
+          <p>推荐用 <strong>方式 A：导入 <code>mcp.json</code></strong> 一键建好三个连接器；也可以用方式 B 逐个手动填。</p>
+        </div>
+
+        <h3>方式 A（推荐）：导入 <code>mcp.json</code> 一键创建</h3>
+        <p>把下面的模板存成 <code>mcp.json</code>，替换 3 处占位符后，在 Quick 的 Add MCP 对话框里选 <strong>Import</strong>（步骤 4 截图 3）即可一次导入全部三个 server。格式与 Kiro / Claude Code 通用。</p>
+        <div class="admon a-info" style="margin:12px 0;">
+          <p class="h">✏️ 需要替换的 3 处（用管理员在模块 2 交付的值）</p>
+          <ul style="margin:6px 0 0;">
+            <li><code>AWS_PROFILE</code> → 您的 AWS profile 名（默认已填 <code>default</code>，出现 3 次；如用其他 profile 再改）</li>
+            <li><code>&lt;PG_READONLY_SECRET_ARN&gt;</code> → RDS 只读密钥 ARN</li>
+            <li>bedrock-kb 的 <code>AWS_REGION</code> / <code>AWS_DEFAULT_REGION</code> → 知识库所在区域（示例为 <code>us-west-2</code>，按实际改）</li>
+          </ul>
+        </div>
+        <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>{
+  "mcpServers": {
+    "redshift": {
+      "command": "/opt/homebrew/bin/uvx",
+      "args": ["awslabs.redshift-mcp-server@latest"],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_REGION": "us-east-1",
+        "AWS_DEFAULT_REGION": "us-east-1",
+        "LOG_LEVEL": "ERROR"
+      }
+    },
+    "rds-postgres": {
+      "command": "/opt/homebrew/bin/uvx",
+      "args": [
+        "awslabs.postgres-mcp-server@1.2.2",
+        "--region", "us-east-1",
+        "--secret_arn", "&lt;PG_READONLY_SECRET_ARN&gt;",
+        "--privilege_check", "enforce"
+      ],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_REGION": "us-east-1",
+        "AWS_DEFAULT_REGION": "us-east-1",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    },
+    "bedrock-kb": {
+      "command": "/opt/homebrew/bin/uvx",
+      "args": ["awslabs.bedrock-kb-retrieval-mcp-server@latest"],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_REGION": "us-west-2",
+        "AWS_DEFAULT_REGION": "us-west-2",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  }
+}</code></pre></div>
+        <p style="color:var(--muted);"><a href="assets/quick-mcp.example.json" download="mcp.json">下载 mcp.json 模板</a>。注意 <code>command</code> 要用 <code>uvx</code> 的<strong>绝对路径</strong>（macOS <code>which uvx</code>、Windows <code>where uvx</code> 查；图形界面不继承终端 PATH）。模板里是 macOS 路径 <code>/opt/homebrew/bin/uvx</code>；<strong>Windows 请改成</strong> <code>C:\\Users\\&lt;you&gt;\\.local\\bin\\uvx.exe</code>。bedrock-kb 的区域要填知识库所在区域。</p>
+
+        <h3>方式 B：逐个手动创建（字段对照）</h3>
+        <p>若不走导入，也可在 Local connector 对话框里逐个填下面字段（Timeout 都填 <code>120</code>）。</p>
+
+        <h4>Redshift（<code>awslabs.redshift-mcp-server</code>） <span class="badge b-ok">命令已验证</span></h4>
+        <div class="tablewrap"><table>
+          <tbody>
+            <tr><th>Command</th><td><code>/opt/homebrew/bin/uvx</code></td></tr>
+            <tr><th>Arguments</th><td><code>awslabs.redshift-mcp-server@latest</code></td></tr>
+            <tr><th>Environment</th><td><code>AWS_PROFILE=default</code>、<code>AWS_REGION=us-east-1</code>、<code>AWS_DEFAULT_REGION=us-east-1</code>、<code>LOG_LEVEL=ERROR</code></td></tr>
+            <tr><th>Timeout</th><td><code>120</code></td></tr>
+          </tbody>
+        </table></div>
+        <p style="color:var(--muted);">实测启动加列工具 5.5 秒，返回 7 个工具。默认只读，不要加 <code>ACCESS_MODE=read-write</code>。</p>
+
+        <h4>RDS PostgreSQL（<code>awslabs.postgres-mcp-server</code>） <span class="badge b-ok">命令已验证</span></h4>
+        <div class="tablewrap"><table>
+          <tbody>
+            <tr><th>Command</th><td><code>/opt/homebrew/bin/uvx</code></td></tr>
+            <tr><th>Arguments</th><td><code>awslabs.postgres-mcp-server@1.2.2 --region us-east-1 --secret_arn &lt;只读角色密钥 ARN&gt; --privilege_check enforce</code></td></tr>
+            <tr><th>Environment</th><td><code>AWS_PROFILE=default</code>、<code>AWS_REGION=us-east-1</code>、<code>FASTMCP_LOG_LEVEL=ERROR</code></td></tr>
+            <tr><th>Timeout</th><td><code>120</code></td></tr>
+          </tbody>
+        </table></div>
+        <p style="color:var(--muted);"><strong>不要</strong>加 <code>--db_type</code>/<code>--db_endpoint</code>：RDS 单实例会因缺集群 ARN 启动即崩溃。连接由 Agent 调 <code>connect_to_database</code> 完成，<code>cluster_identifier</code> 传空字符串。</p>
+
+        <h4>Bedrock 知识库（<code>awslabs.bedrock-kb-retrieval-mcp-server</code>） <span class="badge b-ok">命令已验证</span></h4>
+        <div class="tablewrap"><table>
+          <tbody>
+            <tr><th>Command</th><td><code>/opt/homebrew/bin/uvx</code></td></tr>
+            <tr><th>Arguments</th><td><code>awslabs.bedrock-kb-retrieval-mcp-server@latest</code></td></tr>
+            <tr><th>Environment</th><td><code>AWS_PROFILE=default</code>、<code>AWS_REGION=&lt;知识库所在区域&gt;</code>、<code>FASTMCP_LOG_LEVEL=ERROR</code></td></tr>
+            <tr><th>Timeout</th><td><code>120</code></td></tr>
+          </tbody>
+        </table></div>
+        <p style="color:var(--muted);"><code>AWS_REGION</code> 要填<strong>知识库所在区域</strong>。检索前确认数据源同步状态为 <code>COMPLETE</code>。</p>
+      </section>
+
+      <!-- STEP 4 -->
+      <section class="step" data-title="在 Quick 里创建连接器">
+        <div class="pagehead">
+          <span class="tag">模块 3 · 步骤 4</span>
+          <h2>在 Quick Desktop 里创建连接器</h2>
+        </div>
+        <figure class="shot">
+          <img src="images/1-create-local-connector.png" alt="Quick Desktop 的 Connectors 页，Create 下拉菜单有 Cloud connector、Local connector、Coding agent 三项" loading="lazy">
+          <figcaption><strong>1 入口。</strong>Customize → Connectors，右上角 Create 下拉里选 <strong>Local connector</strong>。</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/3-import-servers.png" alt="Add MCP 对话框选择 Import：识别出 redshift、rds-postgres、bedrock-kb 三个 stdio server，可勾选后一次导入" loading="lazy">
+          <figcaption><strong>2 方式 A · 一次导入（推荐）。</strong>连接类型选 Import，选中步骤 3 的 <code>mcp.json</code>，Quick 识别为 Kiro / Claude Code 格式，列出 3 个 server（redshift、rds-postgres、bedrock-kb），默认全选，点 Import。</figcaption>
+        </figure>
+        <figure class="shot narrow">
+          <img src="images/2-edit-mcp.png" alt="Edit MCP 对话框：Name、Command、Arguments、Description 和环境变量，底部有 Test connection 与 Save changes" loading="lazy">
+          <figcaption><strong>3 方式 B · 逐个创建。</strong>若不走导入：填 Name、Command（uvx 的绝对路径）、Arguments、Description 和环境变量。环境变量存进系统钥匙串，界面不明文显示。保存前可点 Test connection 测试。</figcaption>
+        </figure>
+      </section>
+
+      <!-- STEP 5 -->
+      <section class="step" data-title="对话查询与出图">
+        <div class="pagehead">
+          <span class="tag">模块 3 · 步骤 5</span>
+          <h2>对话查询与出图</h2>
+        </div>
+        <figure class="shot">
+          <img src="images/4-chat.png" alt="在 Quick 对话里问查看 redshift 的销售数据确认趋势，Agent 经过 7 个步骤给出结论和月度营收表" loading="lazy">
+          <figcaption><strong>4 对话查询。</strong>直接说“查看 redshift 的销售数据，确认趋势”。Agent 自己发现工作组、表和列，执行 SQL，给出结论、月度营收表和要点。</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/5-chart.png" alt="接着说绘制图表，Quick 用查到的数据画出月度总营收折线图" loading="lazy">
+          <figcaption><strong>5 出图。</strong>接着说“绘制图表”，Quick 用刚查到的数据画出月度总营收折线图。</figcaption>
+        </figure>
+
+        <div class="admon a-info">
+          <p class="h">💬 RDS 的第一句提示词</p>
+          <div class="codewrap"><button class="copy" type="button">复制</button><pre><code>请先用 connect_to_database 连接数据库：region us-east-1，database_type RPG，
+connection_method pgwire，port 5432，database &lt;库名&gt;，cluster_identifier 传空字符串，
+db_endpoint &lt;RDS 端点&gt;。
+连接后用 run_query 和 get_table_schema 查询，并带上同样的 connection_method、db_endpoint、database。
+然后告诉我有哪些表。</code></pre></div>
+        </div>
+
+        <div class="admon a-warn">
+          <p class="h">⚠️ Local 方式的局限</p>
+          <p>AWS 凭证在每个人的电脑上，权限难统一；笔记本要能直达数据库；只在本机开机联网时可用。企业生产环境请用<strong>模块 4 的 Cloud MCP</strong>。</p>
+        </div>
+      </section>
+
+      <div class="pager">
+        <div class="pager-link" id="nav-back"></div>
+        <div class="pager-link next" id="nav-next"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/wizard.js"></script>
+<script src="assets/copy.js"></script>
+</body>
+</html>
