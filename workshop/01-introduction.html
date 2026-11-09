@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>方案介绍与步骤概述 · Quick + MCP on AWS Workshop</title>
+<link rel="stylesheet" href="assets/workshop.css">
+</head>
+<body data-module="模块 1" data-next-file="02-sa-build.html" data-next-name="模块 2 · SA 一键搭建">
+<div class="shell">
+
+  <aside>
+    <div class="brand">
+      <div class="kicker">AWS Workshop</div>
+      <h1>用自然语言在 Amazon Quick 查询 AWS 数据<br><span style="font-weight:500;color:#aeb8c4;font-size:.9rem;">MCP · AgentCore · Redshift / RDS / Bedrock KB</span></h1>
+    </div>
+    <nav class="modules" aria-label="模块导航">
+      <ol>
+        <li class="active">
+          <a class="mod" href="01-introduction.html">方案介绍与步骤概述</a>
+          <ul class="substeps" id="substeps"></ul>
+        </li>
+        <li><a class="mod" href="02-sa-build.html">SA 一键搭建 DB / 数仓 / RAG / MCP Server</a></li>
+        <li><a class="mod" href="03-quick-local-mcp.html">Quick 快速配置 Local MCP</a></li>
+        <li><a class="mod" href="04-enterprise-cloud-mcp.html">企业最佳实践：Cloud MCP</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="topbar">Workshop &rsaquo; <b>模块 1 · 方案介绍与步骤概述</b> &nbsp;·&nbsp; <span id="crumb-step"></span></div>
+    <div class="content">
+      <div class="progress"><i id="progress-bar"></i></div>
+
+      <!-- STEP 1 -->
+      <section class="step" data-title="欢迎与目标">
+        <div class="pagehead">
+          <span class="tag">模块 1 · 步骤 1</span>
+          <h2>方案介绍</h2>
+          <p>让业务人员不懂数据库、数据仓库或 BI，也能在 Amazon Quick 里用一句话查询部署在 AWS 上的数据，并完成分析与可视化。</p>
+        </div>
+
+        <div class="prereq">
+          <div class="box pre">
+            <div class="bh">📋 前置条件</div>
+            <div class="bd">
+              <p style="margin:0 0 6px;">为了完成本 module，需要您准备以下信息，用于判断自己要执行哪些后续模块：</p>
+              <ul>
+                <li>一个可用的 <strong>AWS 账号</strong>，并确认<strong>区域</strong>（默认 <code>us-east-1</code>），用于后面所有模块</li>
+                <li>您的<strong>角色</strong>：SA / 管理员（执行模块 2），还是业务用户（执行模块 3、4）</li>
+              </ul>
+              <p class="none">本模块只需阅读，无需动手操作。</p>
+            </div>
+          </div>
+          <div class="box out">
+            <div class="bh">🎯 目标输出</div>
+            <div class="bd">
+              <p style="margin:0 0 6px;">读完本模块后，您预期能够：</p>
+              <ul>
+                <li>说清整体链路：Quick → MCP → Redshift / RDS / Bedrock KB</li>
+                <li>区分两条接入路线（Local 与 Cloud MCP）及各自适用场景</li>
+                <li>确定四个模块的执行顺序，以及自己要做哪几个</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <h3>你将搭建什么</h3>
+        <p>一条从自然语言问题到 AWS 数据的完整链路。业务人员在 Amazon Quick 里提问，Quick 把工具调用交给 MCP，MCP 去查 Redshift（数仓）、RDS PostgreSQL（数据库）和 Bedrock 知识库（RAG）。</p>
+        <div class="flow" aria-label="整体链路">
+          <span class="n q">Amazon Quick</span><span class="ar">→</span>
+          <span class="n">MCP（本地或云端）</span><span class="ar">→</span>
+          <span class="n d">Redshift</span>
+          <span class="n d">RDS PostgreSQL</span>
+          <span class="n d">Bedrock 知识库</span>
+        </div>
+        <div class="grid g3" style="margin-top:16px;">
+          <div class="card"><div class="ic">🏬</div><h4>Amazon Redshift（数仓）</h4><p style="color:var(--muted);margin:4px 0 0;">“按区域和品类统计收入”“哪个月销量最高”。用 <code>redshift-mcp-server</code> 发现集群、浏览库表、只读查询。</p></div>
+          <div class="card"><div class="ic">🗄️</div><h4>Amazon RDS PostgreSQL</h4><p style="color:var(--muted);margin:4px 0 0;">“有哪些表”“最近订单按品类汇总”。用 <code>postgres-mcp-server</code>，只读角色直连私网。</p></div>
+          <div class="card"><div class="ic">📚</div><h4>Bedrock 知识库（RAG）</h4><p style="color:var(--muted);margin:4px 0 0;">“退货流程是什么”“某产品支持哪些功能”。用 <code>bedrock-kb-retrieval-mcp-server</code> 检索企业文档并给出处。</p></div>
+        </div>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="step" data-title="MCP 是什么">
+        <div class="pagehead">
+          <span class="tag">模块 1 · 步骤 2</span>
+          <h2>为什么用 MCP</h2>
+        </div>
+        <p>MCP（Model Context Protocol，模型上下文协议）是连接 AI 应用与外部数据、工具的开放标准，可以理解为“AI 应用的 USB 接口”。工具方按统一格式暴露能力（<code>tools/list</code>），AI 应用按统一格式发现并调用（<code>tools/call</code>），不必为每个系统写一套专用集成。</p>
+        <div class="grid g3" style="margin-top:12px;">
+          <div class="card"><h4>MCP 客户端</h4><p style="color:var(--muted);margin:4px 0 0;">AI 应用一侧，例如 Amazon Quick、Kiro。它连接服务端，把工具交给模型选择和调用。</p></div>
+          <div class="card"><h4>MCP 服务端</h4><p style="color:var(--muted);margin:4px 0 0;">暴露工具的一侧，每个工具有名称、描述和参数定义。例如 <code>execute_query</code>、<code>QueryKnowledgeBases</code>。</p></div>
+          <div class="card"><h4>一次调用</h4><p style="color:var(--muted);margin:4px 0 0;">客户端 <code>tools/list</code> 发现工具，模型决定调哪个，<code>tools/call</code> 执行并返回结果。</p></div>
+        </div>
+        <p style="margin-top:14px;">在本方案里，<strong>Amazon Quick 是 MCP 客户端</strong>，<strong>awslabs 开源的各服务 MCP server 是服务端</strong>。</p>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="step" data-title="两条接入路线">
+        <div class="pagehead">
+          <span class="tag">模块 1 · 步骤 3</span>
+          <h2>两条接入路线</h2>
+          <p>本 workshop 覆盖两种 MCP 接入方式，从快速验证到企业生产逐步推进。</p>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>维度</th><th>A 快速：Local 连接器（模块 3）</th><th>B 企业最佳实践：Cloud MCP（模块 4）</th></tr></thead>
+            <tbody>
+              <tr><td>适用</td><td>个人、小团队、演示验证</td><td>企业生产环境</td></tr>
+              <tr><td>配置</td><td>一条命令，几分钟；每人自己配</td><td>管理员一次搭建，Quick 建一个连接器，用户登录即用</td></tr>
+              <tr><td>AWS 凭证在哪</td><td>每个人的电脑 <code>~/.aws</code></td><td>集中在 Lambda 角色，终端无凭证</td></tr>
+              <tr><td>权限与审计</td><td>各自 profile，难统一</td><td>统一 Gateway 鉴权 + Lambda 角色 + 只读库用户 + CloudTrail</td></tr>
+              <tr><td>网络</td><td>笔记本要能直达数据库</td><td>Lambda 在 VPC 内私网访问</td></tr>
+              <tr><td>需要 AgentCore</td><td>不需要</td><td>需要</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- STEP 4 -->
+      <section class="step" data-title="角色与路线图">
+        <div class="pagehead">
+          <span class="tag">模块 1 · 步骤 4</span>
+          <h2>角色分工与路线图</h2>
+        </div>
+        <div class="grid g2">
+          <div class="card"><h4>👷 SA / 管理员（模块 2）</h4><p style="color:var(--muted);margin:4px 0 0;">用 AWS CLI 一键搭建数据源与企业入口：Redshift、RDS、Bedrock 知识库，以及 Cognito + AgentCore Gateway + Lambda。全程脚本化，可交给 AI Agent（Kiro）执行。</p></div>
+          <div class="card"><h4>🧑‍💼 业务用户（模块 3、4）</h4><p style="color:var(--muted);margin:4px 0 0;">在 Quick 里配连接器——模块 3 用 Local 连接器、模块 4 用 Cloud MCP 连接器，然后用自然语言提问、出表、画图。不接触 SQL、凭证或网络细节。</p></div>
+        </div>
+
+        <h3>Workshop 路线图</h3>
+        <ol class="steps">
+          <li><h4>模块 1 · 方案介绍与步骤概述</h4><p>（本页）理解整体链路、MCP 概念、两条接入路线与角色分工。</p></li>
+          <li><h4>模块 2 · SA 一键搭建</h4><p>用脚本建好 Redshift、RDS、Bedrock 知识库和 AgentCore 企业入口，并验证产出。</p></li>
+          <li><h4>模块 3 · Quick 快速配置 Local MCP</h4><p>在 Quick Desktop 用 Local 连接器连上数据源，几分钟内从提问到出图。</p></li>
+          <li><h4>模块 4 · 企业最佳实践 Cloud MCP</h4><p>用 Cognito + AgentCore Gateway 提供统一云端入口，Quick 自动换令牌，集中管控与审计。</p></li>
+        </ol>
+
+        <div class="admon a-info">
+          <p class="h">ℹ️ 环境约定</p>
+          <p>区域默认 <code>us-east-1</code>；所有资源以 <code>&lt;NAME_PREFIX&gt;-*</code> 命名（默认 <code>quick-mcp-demo</code>），并打标签 <code>Project=&lt;NAME_PREFIX&gt;</code>。整套方案只用 AWS CLI、Bash 和 Python，不用 CDK 或 CloudFormation。</p>
+        </div>
+        <div class="admon a-warn">
+          <p class="h">⚠️ 成本与安全提示</p>
+          <p>Redshift Serverless、RDS、Lambda、S3 Vectors、AgentCore Gateway 都会计费，workshop 结束请按模块 2 的清理步骤回收。涉及生产账号时只读优先，删除或修改前先确认。</p>
+        </div>
+      </section>
+
+      <div class="pager">
+        <div class="pager-link" id="nav-back"></div>
+        <div class="pager-link next" id="nav-next"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/wizard.js"></script>
+<script src="assets/copy.js"></script>
+</body>
+</html>

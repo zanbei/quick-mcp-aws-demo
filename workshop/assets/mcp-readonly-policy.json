@@ -1,0 +1,53 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SelfIdentity",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    },
+    {
+      "Sid": "RedshiftDiscovery",
+      "Effect": "Allow",
+      "Action": ["redshift:DescribeClusters", "redshift-serverless:ListWorkgroups"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "RedshiftServerlessCreds",
+      "Effect": "Allow",
+      "Action": "redshift-serverless:GetCredentials",
+      "Resource": "arn:aws:redshift-serverless:us-east-1:<ACCT>:workgroup/<WG_ID>"
+    },
+    {
+      "Sid": "RedshiftDataRun",
+      "Effect": "Allow",
+      "Action": ["redshift-data:ExecuteStatement", "redshift-data:BatchExecuteStatement"],
+      "Resource": "arn:aws:redshift-serverless:us-east-1:<ACCT>:workgroup/<WG_ID>"
+    },
+    {
+      "Sid": "RedshiftDataRead",
+      "Effect": "Allow",
+      "Action": ["redshift-data:DescribeStatement", "redshift-data:GetStatementResult"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "RdsReadOnlySecret",
+      "Effect": "Allow",
+      "Action": ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
+      "Resource": "arn:aws:secretsmanager:us-east-1:<ACCT>:secret:quick-mcp-demo/pg-readonly-*"
+    },
+    {
+      "Sid": "RdsDescribe",
+      "Effect": "Allow",
+      "Action": "rds:DescribeDBInstances",
+      "Resource": "arn:aws:rds:us-east-1:<ACCT>:db:*"
+    },
+    {
+      "Sid": "BedrockKbRetrieve",
+      "Effect": "Allow",
+      "Action": "bedrock:Retrieve",
+      "Resource": "arn:aws:bedrock:us-east-1:<ACCT>:knowledge-base/<KB_ID>"
+    }
+  ]
+}
